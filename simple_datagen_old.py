@@ -1,7 +1,6 @@
 import itertools
 from pythonosc import udp_client
 import sounddevice as sd
-from pydub import AudioSegment
 import threading
 from scipy.io.wavfile import write
 from copy import copy
@@ -14,7 +13,7 @@ channels = 2  # Number of audio channels (2 for stereo)
 port = 7771  # must match the port declared in Pure data
 client = udp_client.SimpleUDPClient("127.0.0.1", port)
 
-# Define a lock to synchronize access to the recording device
+# Making a lock for the threads, tbh I don't remember why I needed to handle the threads
 lock = threading.Lock()
 
 num_settings_per_knob = 4

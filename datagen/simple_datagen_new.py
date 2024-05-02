@@ -4,6 +4,12 @@ import sounddevice as sd
 import threading
 from scipy.io.wavfile import write
 from copy import copy
+import os
+
+global pd_executable
+# find the pd executable in your computer, the following works on mac
+pd_executable = '/Applications/Pd-0.54-1.app/Contents/Resources/bin/pd' 
+pd_script_path = 'pd_script.pd'
 
 
 duration = 2  # Duration of the recording in seconds

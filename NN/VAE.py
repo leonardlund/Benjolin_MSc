@@ -1,4 +1,3 @@
-import torch
 import torch.nn as nn
 import torch.distributions as dists
 
@@ -55,7 +54,7 @@ class Decoder(nn.Module):
         return x_hat
 
 
-class VAE(nn.module):
+class VAE(nn.Module):
     def __init__(self, input_dim, hidden_dim, latent_dim):
         super(VAE, self).__init__()
         self.input_dim = input_dim

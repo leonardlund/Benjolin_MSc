@@ -7,10 +7,11 @@ import torchaudio
 
 
 class BenjoDataset(Dataset):
-    def __init__(self, data_dir, features='mfcc-2d', device='cuda'):  # Adjust max_length as needed
+    def __init__(self, data_dir, num_mfccs=13, features='mfcc-2d', device='cuda'):  # Adjust max_length as needed
         self.data_dir = data_dir
         self.features = features
         self.device = device
+        self.num_mfccs = num_mfccs
         self.files = [os.path.join(data_dir, f) for f in os.listdir(data_dir) if f.endswith(".wav")]
 
     def __len__(self):
@@ -18,17 +19,22 @@ class BenjoDataset(Dataset):
 
     def __getitem__(self, index):
         path = self.files[index]
-        waveform, sample_rate = torchaudio.load(path, normalize=True)
+        waveform, sample_rate = torchaudio.load(path, normalize=True, format='wav')
+        waveform = waveform[0, :]
 
         if 'mfcc' in self.features:
             MFCC = torchaudio.transforms.MFCC(sample_rate=sample_rate,
-                n_mfcc=13,
+                n_mfcc=self.num_mfccs,
                 melkwargs={"n_fft": 400, "hop_length": 160, "n_mels": 23, "center": False},)
             features = MFCC(waveform)
+            features = torch.clip(features, min=-25, max=25)
+            features += 25
+            features /= 50
             if self.features == 'mfcc-bag-of-frames':
-                mean = torch.mean(features, axis=0)
-                std = torch.std(features, axis=0)
-                feautrs = torch.concatenate(mean, std)
+                mean = torch.mean(features, axis=1)
+                std = torch.std(features, axis=1)
+                features = torch.cat((mean, std))
+                features = features.reshape((1, 2 * self.num_mfccs))
 
         return features
 

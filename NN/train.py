@@ -12,7 +12,7 @@ def train(vae, data, epochs, beta=1e-5):
     for epoch in range(epochs):
         loss_this_epoch = 0
         for x in data:
-            x = x.flatten()
+            # x = x.flatten()
             opt.zero_grad()
 
             z, mu, sigma = vae.encoder.forward(x)

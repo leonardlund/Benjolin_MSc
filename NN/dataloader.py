@@ -28,6 +28,7 @@ class BenjoDataset(Dataset):
                 melkwargs={"n_fft": 400, "hop_length": 160, "n_mels": 23, "center": False},)
             features = MFCC(waveform)
             features = torch.clip(features, min=-25, max=25)
+            shape = features.shape
             features += 25
             features /= 50
             if self.features == 'mfcc-bag-of-frames':
@@ -35,6 +36,8 @@ class BenjoDataset(Dataset):
                 std = torch.std(features, axis=1)
                 features = torch.cat((mean, std))
                 features = features.reshape((1, 2 * self.num_mfccs))
+            else:
+                features = features.reshape((1, shape[0], shape[1]))
 
         return features
 

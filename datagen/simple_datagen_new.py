@@ -1,31 +1,26 @@
 import itertools
-from pythonosc import udp_client
-import sounddevice as sd
-import threading
-from scipy.io.wavfile import write
 from copy import copy
 import os
+from time import sleep
+from pythonosc import udp_client
+import subprocess
+# from pyuac import main_requires_admin
+import pyuac
 
 global pd_executable
 # find the pd executable in your computer, the following works on mac
-pd_executable = '/Applications/Pd-0.54-1.app/Contents/Resources/bin/pd' 
-pd_script_path = 'pd_script.pd'
+pd_executable = r'C:\"Program Files\Pd\bin\pd"'
+pd_script_path = os.path.normpath(r"C:\Users\Leonard\GitPrivate\Benjolin_MA\pd_benjolin_2024\pain.pd")
 
-
-duration = 2  # Duration of the recording in seconds
-sample_rate = 44100  # Sample rate (samples per second)
-channels = 2  # Number of audio channels (2 for stereo)
-
-port = 7771  # must match the port declared in Pure data
+port = 5005  # must match the port declared in Pure data
 client = udp_client.SimpleUDPClient("127.0.0.1", port)
 
-# Making a lock for the threads, tbh I don't remember why I needed to handle the threads
-lock = threading.Lock()
-
-num_settings_per_knob = 4
+knob_resolution = 126
+num_settings_per_knob = 2
 setting_list = []
 for i in range(num_settings_per_knob):
-    setting_list.append((i+1)/(num_settings_per_knob+1))
+    setting = int(knob_resolution * (i+1)/(num_settings_per_knob+1))
+    setting_list.append(setting)
 parameters = [
     ("param1", copy(setting_list)),
     ("param2", copy(setting_list)),
@@ -40,34 +35,23 @@ parameters = [
 # Generate all combinations of parameter settings
 combinations = list(itertools.product(*[param[1] for param in parameters]))
 
+for j, combination in enumerate(combinations):
+    if j > 0 and False:
+        break
+    combo = ''
+    for i, param in enumerate(combination):
+        if i == 0:
+            param += 1
+        combo += f';param{i+1} {str(param)} '
+    combo += ';'
 
-def record_and_save(combination):
-    with lock:
-        client.send_message("/benjolin", combination)
-        print("Sent OSC")
-        recording = sd.rec(int(duration * sample_rate), samplerate=sample_rate, channels=channels)
-        print("Starting recording...")
-        
-        # Wait for the recording to finish
-        sd.wait()
-        #sd.write(filename, recording, sample_rate)
-        print("Recording finished")
+    command = pd_executable + f' -nogui -send "{combo}"  ' + pd_script_path
+    print("Sent bash command: ", command)
     
-    # Generate a filename for the combination
-    filename = "dataset/" + "_".join(str(param).replace('.', '') for param in combination) + ".wav"
-    print(filename)
-    
-    write(filename, sample_rate, recording)
+    os.system(command)
+    # client.send_message("/startup", osc_string)
+    # print("Sent OSC: ", osc_string)
 
-# Create a thread for each combination
-threads = []
-for combination in combinations:
-    thread = threading.Thread(target=record_and_save, args=(combination,))
-    thread.start()
-    threads.append(thread)
+    # include -nogui flag to execute pd without GUI
+    #command = pd_executable + f' -send "; filename {filename}" -nogui ' + pd_script_path
 
-# Wait for all threads to finish
-for thread in threads:
-    thread.join()
-
-print("All recordings saved successfully.")

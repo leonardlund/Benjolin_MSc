@@ -10,7 +10,7 @@ import random
 device = "cuda" if torch.cuda.is_available() else "cpu"
 print("Device: ", device)
 
-data_directory = os.path.normpath(r"/home/midml/Desktop/Leo_project/Benjolin_MA/pd_benjolin_2024/audio")
+data_directory = os.path.normpath(r"/audio")
 
 
 bag_of_frames = True

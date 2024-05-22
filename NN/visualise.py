@@ -9,7 +9,7 @@ from plot import plot_mfcc_spectrograms_side_by_side
 import random
 
 
-data_directory = os.path.normpath(r"/home/midml/Desktop/Leo_project/Benjolin_MA/pd_benjolin_2024/audio")
+data_directory = os.path.normpath(r"/audio")
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 print("Device: ", device)

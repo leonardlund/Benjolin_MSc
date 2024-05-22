@@ -1,5 +1,7 @@
 # dataset
 /pd_benjolin_2024/audio
+/NN/__pycache__/
+/.idea
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

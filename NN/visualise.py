@@ -2,16 +2,17 @@ from VAE import *
 from CVAE import *
 from dataloader import *
 from train import *
+import numpy as np
 import os
 import matplotlib.pyplot as plt
 from plot import plot_mfcc_spectrograms_side_by_side
 import random
 
-device = "cuda" if torch.cuda.is_available() else "cpu"
-print("Device: ", device)
 
 data_directory = os.path.normpath(r"/home/midml/Desktop/Leo_project/Benjolin_MA/pd_benjolin_2024/audio")
 
+device = "cuda" if torch.cuda.is_available() else "cpu"
+print("Device: ", device)
 
 bag_of_frames = True
 feature_type = 'mfcc-bag-of-frames' if bag_of_frames else 'mfcc-2d'
@@ -24,16 +25,12 @@ input_dim = 26 if bag_of_frames else input_shape[1] * input_shape[2]
 hidden_dim = input_dim // 2
 latent_dim = 2
 
-epochs = 20
-
 vae = VAE(input_dim=input_dim, hidden_dim=hidden_dim, latent_dim=latent_dim)  # batch_size=32
-vae = vae.to(device)
-vae, losses = train(vae=vae, data=data_loader, epochs=epochs)
-save_dir = "/home/midml/Desktop/Leo_project/Benjolin_MA/NN/models/test-bag-1"
-torch.save(vae.state_dict(), save_dir)
-np.save("/home/midml/Desktop/Leo_project/Benjolin_MA/NN/models/bag-losses-1.npy", losses)
-plt.plot(losses, label="Losses over epochs")
 
+vae = vae.to(device)
+save_dir = "/home/midml/Desktop/Leo_project/Benjolin_MA/NN/models/test-bag-1"
+vae.load_state_dict(torch.load(save_dir))
+print("Loaded model from ", save_dir, " successfully!")
 plt.rcParams['figure.dpi'] = 150
 
 for _ in range(3):

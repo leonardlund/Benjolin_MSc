@@ -5,7 +5,6 @@ from torch.utils.data import Dataset
 import torchaudio
 
 
-
 class BenjoDataset(Dataset):
     def __init__(self, data_dir, num_mfccs=13, features='mfcc-2d', device='cuda'):  # Adjust max_length as needed
         self.data_dir = data_dir
@@ -41,9 +40,10 @@ class BenjoDataset(Dataset):
 
         return features
 
-"""
-if __name__ == "__main__":
-    data_dir = ""
-    dataset = BenjoDataset(data_dir, features='mfcc', device='cuda')
-    data_loader = torch.utils.data.DataLoader(dataset, batch_size=None, shuffle=True)
-"""
+    def get_benjo_params(self, index):
+        path = self.files[index]
+        params_string = path.removeprefix(self.data_dir + '/').removesuffix('.wav')
+        params_list = params_string.split('-')
+        params_array = np.array(list(map(int, params_list)))
+        return params_array, params_string
+

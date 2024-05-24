@@ -9,26 +9,26 @@ from plot import plot_mfcc_spectrograms_side_by_side
 import random
 
 
-data_directory = os.path.normpath(r"/audio")
+data_directory = os.path.normpath(r"/home/midml/Desktop/Leo_project/Benjolin_MA/audio")
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 print("Device: ", device)
 
 bag_of_frames = True
 feature_type = 'mfcc-bag-of-frames' if bag_of_frames else 'mfcc-2d'
-data = BenjoDataset(data_directory, features=feature_type, device=device)
+data = BenjoDataset(data_directory, features=feature_type, device=device, num_mfccs=40)
 data_loader = torch.utils.data.DataLoader(data, batch_size=1, shuffle=True)
 
 input_shape = data[0].shape
 print(input_shape)
-input_dim = 26 if bag_of_frames else input_shape[1] * input_shape[2]
+input_dim = 80 if bag_of_frames else input_shape[1] * input_shape[2]
 hidden_dim = input_dim // 2
-latent_dim = 2
+latent_dim = 16
 
 vae = VAE(input_dim=input_dim, hidden_dim=hidden_dim, latent_dim=latent_dim)  # batch_size=32
 
 vae = vae.to(device)
-save_dir = "/home/midml/Desktop/Leo_project/Benjolin_MA/NN/models/test-bag-1"
+save_dir = "/home/midml/Desktop/Leo_project/Benjolin_MA/NN/models/test-bag-beta1e-4-40mfcc"
 vae.load_state_dict(torch.load(save_dir))
 print("Loaded model from ", save_dir, " successfully!")
 plt.rcParams['figure.dpi'] = 150
@@ -38,15 +38,16 @@ for _ in range(3):
     params_array, params_string = data.get_benjo_params(index)
     example = data[index]
     if bag_of_frames:
-        x_hat, z = vae.forward(example.reshape(1, 1, 26).to(device))
+        x_hat, z = vae.forward(example.reshape(1, 1, 80).to(device))
     else:
         x_hat, z = vae.forward(example.reshape(1, 1, input_shape[1], input_shape[2]).to(device))
+    example = example.cpu().detach().numpy()
     reconstructed = x_hat.cpu().detach().numpy()
     z_coords = z.cpu().detach().numpy()
     z_list = [round(z_coords[0], 3), round(z_coords[1], 3)]
     if bag_of_frames:
-        plot_mfcc_spectrograms_side_by_side(example.reshape((2, 13)).T,
-                                            reconstructed.reshape((2, 13)).T,
+        plot_mfcc_spectrograms_side_by_side(example.reshape((2, 40)).T,
+                                            reconstructed.reshape((2, 40)).T,
                                             benjo_params=params_string,
                                             latent_space=z_list)
     else:

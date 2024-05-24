@@ -6,7 +6,7 @@ import torchaudio
 
 
 class BenjoDataset(Dataset):
-    def __init__(self, data_dir, num_mfccs=13, features='mfcc-2d', device='cuda'):  # Adjust max_length as needed
+    def __init__(self, data_dir, num_mfccs=90, features='mfcc-2d', device='cuda'):  # Adjust max_length as needed
         self.data_dir = data_dir
         self.features = features
         self.device = device
@@ -19,12 +19,13 @@ class BenjoDataset(Dataset):
     def __getitem__(self, index):
         path = self.files[index]
         waveform, sample_rate = torchaudio.load(path, normalize=True, format='wav')
-        waveform = waveform[0, :]
+        waveform = waveform[0, :].to(self.device)
 
         if 'mfcc' in self.features:
             MFCC = torchaudio.transforms.MFCC(sample_rate=sample_rate,
-                n_mfcc=self.num_mfccs,
-                melkwargs={"n_fft": 400, "hop_length": 160, "n_mels": 23, "center": False},)
+                                              n_mfcc=self.num_mfccs,
+                                              melkwargs={"n_fft": 400, "hop_length": 160,
+                                                         "n_mels": 101, "center": False}).to(self.device)
             features = MFCC(waveform)
             features = torch.clip(features, min=-25, max=25)
             shape = features.shape

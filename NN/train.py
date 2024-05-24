@@ -16,20 +16,22 @@ def train(vae, data, epochs, beta=1e-5, device='cuda'):
     for epoch in range(epochs):
         loss_this_epoch = 0
         with alive_bar(total=len(data)) as bar:
-            for x in data:
+            for i, x in enumerate(data):
                 x = x.flatten()
                 x = x.to(device)
                 opt.zero_grad()
 
-                z, mu, sigma = vae.encoder.forward(x)
+                z, mu, log_var = vae.encoder.forward(x)
                 x_hat = vae.decoder.forward(z)
 
                 recon_loss = MSELoss(x_hat, x)
-                kl = torch.sum((sigma**2 + mu**2 - torch.exp(sigma) - 1/2))
-
-                standard_vae_loss = recon_loss + kl * beta
-                standard_vae_loss.backward()
-                loss_this_epoch += standard_vae_loss  # / len(data)
+                kl = torch.sum(-0.5 * (1 + log_var - mu**2 - torch.exp(log_var)))
+                # kl = torch.sum((sigma**2 + mu**2 - torch.exp(sigma) - 1/2))  # OLD and WRONG
+                """if i % 1 == 0:
+                    print(f"KL: {kl.item()}. Reconstruction loss: {recon_loss.item()}")"""
+                loss = recon_loss + kl * beta
+                loss.backward()
+                loss_this_epoch += loss  # / len(data)
                 opt.step()
                 bar()
         scheduler.step()

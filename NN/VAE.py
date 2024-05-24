@@ -1,5 +1,6 @@
 import torch.nn as nn
 import torch.distributions as dists
+import torch
 
 class Encoder(nn.Module):
     def __init__(self, input_dim, hidden_dim, latent_dim, device):
@@ -18,18 +19,20 @@ class Encoder(nn.Module):
         self.sequential = nn.Sequential(self.dense1, self.activation1, self.dense2, self.activation2)
 
         self.denseMu = nn.Linear(self.hidden_dim, self.latent_dim)
-        self.denseSigma = nn.Linear(self.hidden_dim, self.latent_dim)
+        self.denseLogVar = nn.Linear(self.hidden_dim, self.latent_dim)
 
-    def reparameterization(self, mu, sigma):
+    def reparameterization(self, mu, log_variance):
+        sigma = 0.5 * torch.exp(log_variance)
         return mu + sigma * dists.Normal(0, 1).sample(mu.shape).to(self.device)
 
     def forward(self, x):
         h = self.sequential(x)
 
         mu = self.denseMu(h)
-        sigma = self.denseSigma(h)
-        z = self.reparameterization(mu, sigma)
-        return z, mu, sigma
+        log_variance = self.denseLogVar(h)
+
+        z = self.reparameterization(mu, log_variance)
+        return z, mu, log_variance
     
 class Decoder(nn.Module):
     def __init__(self, input_dim, hidden_dim, latent_dim, device):

@@ -5,6 +5,7 @@ from time import sleep
 from pythonosc import udp_client
 import subprocess
 import numpy as np
+from NN import dataloader
 
 global pd_executable
 # find the pd executable in your computer, the following works on mac
@@ -22,8 +23,18 @@ port = 5005  # must match the port declared in Pure data
 client = udp_client.SimpleUDPClient("127.0.0.1", port)
 
 knob_resolution = 126
-num_settings_per_knob = 4
-setting_list = []
+
+audiopath = '/home/midml/Desktop/Leo_project/Benjolin_MA/audio'
+
+files = os.listdir(audiopath)
+already_sampled = []
+
+for file in files:
+    if file.endswith(".wav"):
+        params_string = file.removeprefix('/').removesuffix('.wav')
+        params_list = params_string.split('-')
+        params_list = list(map(int, params_list))
+        already_sampled.append(params_list)
 
 
 num_combinations = 5000
@@ -37,7 +48,10 @@ for i in range(num_combinations):
         parameters.append(np.random.randint(1, knob_resolution))
         if k == 2 and parameters[2] == parameters[0]:
             parameters[2] += 1
-        combo += f';param{k+1} {str(parameters[k])} '
+    if [parameters] in already_sampled:
+        continue
+    for j in range(8):
+        combo += f';param{j+1} {str(parameters[j])} '
     combo += ';'
 
     # command = pd_executable + f' -nogui -send "{combo}"  ' + pd_script_path

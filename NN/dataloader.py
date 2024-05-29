@@ -18,6 +18,11 @@ class BenjoDataset(Dataset):
 
     def __getitem__(self, index):
         path = self.files[index]
+
+        if self.features == 'params':
+            params_array, _ = self.get_benjo_params(index)
+            return torch.tensor(params_array, dtype=torch.float32).to(self.device) / 126
+
         waveform, sample_rate = torchaudio.load(path, normalize=True, format='wav')
         waveform = waveform[0, :].to(self.device)
 
@@ -36,10 +41,12 @@ class BenjoDataset(Dataset):
                 std = torch.std(features, axis=1)
                 features = torch.cat((mean, std))
                 features = features.reshape((1, 2 * self.num_mfccs))
+                return features
             else:
                 features = features.reshape((1, shape[0], shape[1]))
+                return features
 
-        return features
+
 
     def get_benjo_params(self, index):
         path = self.files[index]

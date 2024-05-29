@@ -2,7 +2,7 @@ from pythonosc import udp_client
 from pythonosc.dispatcher import Dispatcher
 from pythonosc.osc_server import BlockingOSCUDPServer
 import numpy as np
-from NN.mlp import MLPRegressor
+from NN.latent2param_MLP import MLPRegressor
 import torch
 from time import sleep
 

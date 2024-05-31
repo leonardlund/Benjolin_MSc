@@ -31,7 +31,7 @@ latent_dim = 2
 vae = VAE(input_dim=input_dim, hidden_dim=hidden_dim, latent_dim=latent_dim)  # batch_size=32
 
 vae = vae.to(device)
-model_directory = "/home/midml/Desktop/Leo_project/Benjolin_MA/NN/models/param_VAE_7"
+model_directory = "/home/midml/Desktop/Leo_project/Benjolin_MA/NN/models/param_VAE_8"
 vae.load_state_dict(torch.load(model_directory))
 print("Loaded model from ", model_directory, " successfully!")
 plt.rcParams['figure.dpi'] = 150
@@ -49,7 +49,7 @@ with (alive_bar(total=len(data)) as bar):
         latent_matrix[i, :] = z_coords
         bar()
 
-param_data_directory = '/home/midml/Desktop/Leo_project/Benjolin_MA/param2latent_datasets/latent_dataset_param_vae7.npz'
+param_data_directory = '/home/midml/Desktop/Leo_project/Benjolin_MA/param2latent_datasets/latent_dataset_param_vae8.npz'
 np.savez_compressed(param_data_directory, parameter_matrix=parameter_matrix, latent_matrix=latent_matrix)
 
 print("Successfully saved parameters to ", param_data_directory)

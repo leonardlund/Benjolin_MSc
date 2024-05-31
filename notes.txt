@@ -182,3 +182,40 @@ learning_rate = 0.001
 gamma = 0.90
 epochs = 100
 activation = 'tanh'
+
+### param vae 8
+- once again fixed kl-divergence.
+batch_size = 32
+random_seed = 42
+input_dim, hidden_dim, latent_dim = 8, 16, 2
+beta = 1e-3
+learning_rate = 0.001
+epochs = 100
+activation = 'tanh'
+
+
+Current best trial: f929a58a with val_loss=0.03218218105942456 and params={'hidden_dim': 16, 'input_dim': 8, 'latent_dim': 2, 'lr': 0.003855865253254977, 'batch_size': 32, 'gamma': 1, 'beta': 0.0010423344505271657, 'activation': 'relu'}
+╭────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ Trial name              status                lr          beta   activation       iter     total time (s)     val_loss │
+├────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ train_search_c4797735   TERMINATED   0.00139274    0.000304877   tanh               10           104.321     0.0336436 │
+│ train_search_fe20fb78   TERMINATED   0.000670429   0.00347107    tanh                2            22.3349    0.0461991 │
+│ train_search_0c93bce4   TERMINATED   0.00706164    0.00651815    tanh                2            22.2832    0.0482255 │
+│ train_search_35060c11   TERMINATED   0.000645105   0.000356732   sigmoid             2            22.4406    0.0504368 │
+│ train_search_abd9ae21   TERMINATED   0.00627757    0.00100999    tanh                4            42.3964    0.0395136 │
+│ train_search_6a00dd1c   TERMINATED   0.00179202    0.000217359   sigmoid             2            22.4145    0.0501324 │
+│ train_search_29427594   TERMINATED   0.00120808    0.00140108    sigmoid             2            22.3776    0.0511578 │
+│ train_search_f929a58a   TERMINATED   0.00385587    0.00104233    relu               10           103.792     0.0321822 │
+│ train_search_f4661b67   TERMINATED   0.00287938    0.000102663   sigmoid             2            22.5242    0.0489756 │
+│ train_search_e7c00f50   TERMINATED   0.000152267   0.00556512    sigmoid             2            22.3194    0.0568931 │
+│ train_search_0fd54ed4   TERMINATED   0.00279227    0.00885796    relu                4            42.932     0.043862  │
+│ train_search_ec0266a4   TERMINATED   0.000781331   0.000754312   sigmoid             2            22.3916    0.0510393 │
+│ train_search_8b69a00a   TERMINATED   0.000122903   0.000829351   relu                4            43.0738    0.043885  │
+│ train_search_33060936   TERMINATED   0.00212367    0.00102943    sigmoid             2            22.4679    0.0503841 │
+│ train_search_d702195e   TERMINATED   0.00202147    0.00626321    tanh                4            42.4146    0.0460705 │
+│ train_search_44a1d73c   TERMINATED   0.000121112   0.000595908   tanh                4            42.6917    0.043433  │
+│ train_search_0dc78fc8   TERMINATED   0.0042736     0.00105935    relu                8            82.8609    0.0348183 │
+│ train_search_64f9824a   TERMINATED   0.00011115    0.000297853   sigmoid             2            22.2067    0.0569065 │
+│ train_search_3463c439   TERMINATED   0.00135591    0.00404447    sigmoid             2            22.2399    0.0523977 │
+│ train_search_b4532ed6   TERMINATED   0.000523129   0.00225849    tanh                4            42.6025    0.0429365 │
+╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯

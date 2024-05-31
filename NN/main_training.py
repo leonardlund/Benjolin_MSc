@@ -23,10 +23,10 @@ validation_split = .1
 shuffle_dataset = True
 random_seed = 42
 input_dim, hidden_dim, latent_dim = 8, 16, 2
-beta = 1e-3
-learning_rate = 0.001
-gamma = 0.90
-epochs = 100
+beta = 0.001
+learning_rate = 0.002
+gamma = 1
+epochs = 15
 activation = 'tanh'
 
 data = BenjoDataset(data_directory, features=feature_type, device=device)
@@ -48,17 +48,17 @@ vae = VAE(input_dim=input_dim, hidden_dim=hidden_dim, latent_dim=latent_dim, act
 vae.to(device)
 
 if CONTINUE_LEARNING:
-    save_dir = "/home/midml/Desktop/Leo_project/Benjolin_MA/NN/models/param_VAE_7"
+    save_dir = "/home/midml/Desktop/Leo_project/Benjolin_MA/NN/models/param_VAE_9"
     vae.load_state_dict(torch.load(save_dir))
     print("Loaded model from ", save_dir, " successfully!")
 
 vae, train_losses, validation_losses = train(vae=vae, training_data=train_loader, validation_data=validation_loader,
                                              epochs=epochs, opt='ADAM', beta=beta, lr=learning_rate, gamma=gamma)
 
-save_dir = f"/home/midml/Desktop/Leo_project/Benjolin_MA/NN/models/param_VAE_7"
+save_dir = f"/home/midml/Desktop/Leo_project/Benjolin_MA/NN/models/param_VAE_9"
 torch.save(vae.state_dict(), save_dir)
-np.save(f"/home/midml/Desktop/Leo_project/Benjolin_MA/NN/models/param_VAE_7_train_losses.npy", train_losses)
-np.save(f"/home/midml/Desktop/Leo_project/Benjolin_MA/NN/models/param_VAE_7_val_losses.npy", train_losses)
+np.save(f"/home/midml/Desktop/Leo_project/Benjolin_MA/NN/models/param_VAE_9_train_losses.npy", train_losses)
+np.save(f"/home/midml/Desktop/Leo_project/Benjolin_MA/NN/models/param_VAE_9_val_losses.npy", train_losses)
 
 
 for _ in range(3):

@@ -4,6 +4,13 @@ import numpy as np
 from torch.cuda.amp import GradScaler
 
 
+def kl_divergence(mu, log_var, beta):
+    # mu.shape = (batch_size, latent)
+    kl = torch.sum(-0.5 * (1 + log_var - mu ** 2 - torch.exp(log_var)), dim=1)  # (batch_size, 1)
+    kl = torch.mean(kl)  # (1)
+    return kl * beta
+
+
 def train(vae, training_data, validation_data, epochs, opt='SGD', beta=1e-5, lr=1e-4, gamma=0.95, device='cuda'):
     training_losses = np.array([])
     validation_losses = np.array([])
@@ -24,7 +31,8 @@ def train(vae, training_data, validation_data, epochs, opt='SGD', beta=1e-5, lr=
                     z, mu, log_var = vae.encoder.forward(x)
                     x_hat = vae.decoder.forward(z)
                     recon_loss = MSELoss(x_hat, x)
-                    kl = torch.sum(-0.5 * (1 + log_var - mu ** 2 - torch.exp(log_var))) * beta
+                    # kl = torch.mean(-0.5 * (1 + log_var - mu ** 2 - torch.exp(log_var))) * beta
+                    kl = kl_divergence(mu, log_var, beta)
                     loss = recon_loss + kl
 
                 scaler.scale(loss).backward()
@@ -42,8 +50,8 @@ def train(vae, training_data, validation_data, epochs, opt='SGD', beta=1e-5, lr=
                 z, mu, log_var = vae.encoder.forward(x)
                 x_hat = vae.decoder.forward(z)
                 recon_loss = MSELoss(x_hat, x)
-                kl = torch.sum(-0.5 * (1 + log_var - mu ** 2 - torch.exp(log_var)))
-                validation_loss += recon_loss + kl * beta
+                kl = kl_divergence(mu, log_var, beta)
+                validation_loss += recon_loss + kl
 
         print(f"Epoch: {epoch + 1} out of {epochs}. Training Loss = {loss_this_epoch.item() / len(training_data)}. "
               f"Validation Loss = {validation_loss.item() / len(validation_data)}")

@@ -1,7 +1,6 @@
 import torch
 from VAE import *
 from dataloader import *
-from train import *
 import os
 import matplotlib.pyplot as plt
 from plot import plot_param_reconstructions
@@ -10,16 +9,22 @@ from torch.utils.data.sampler import SubsetRandomSampler
 from functools import partial
 import tempfile
 from pathlib import Path
-from hyperopt import hp
 from ray.tune.search.hyperopt import HyperOptSearch
-from ray.tune.search.bayesopt import BayesOptSearch
 import torch.nn as nn
 import torch.optim as optim
+from torch.cuda.amp import GradScaler
 from ray import tune
 from ray import train
 from ray.train import Checkpoint, get_checkpoint
 from ray.tune.schedulers import ASHAScheduler
 import ray.cloudpickle as pickle
+
+
+def kl_divergence(mean, log_variance, beta):
+    # mu.shape = (batch_size, latent)
+    kld = torch.sum(-0.5 * (1 + log_variance - mean ** 2 - torch.exp(log_variance)), dim=1)  # (batch_size, 1)
+    kld = torch.mean(kld)  # (1)
+    return kld * beta
 
 
 def load_data(data_dir, feature, device, batch_size):
@@ -69,10 +74,8 @@ def train_search(config):
 
     train_loader, valid_loader, test_loader = load_data(data_dir, 'params', DEVICE, config['batch_size'])
 
-    training_losses = np.array([])
-    validation_losses = np.array([])
     scaler = GradScaler()
-    scheduler = torch.optim.lr_scheduler.ExponentialLR(opt, gamma=config['gamma'])
+    # scheduler = torch.optim.lr_scheduler.ExponentialLR(opt, gamma=config['gamma'])
 
     for epoch in range(start_epoch, 10):
         training_loss = 0
@@ -85,15 +88,15 @@ def train_search(config):
                 z, mu, log_var = model.encoder.forward(x)
                 x_hat = model.decoder.forward(z)
                 recon_loss = criterion(x_hat, x)
-                kl = torch.sum(-0.5 * (1 + log_var - mu ** 2 - torch.exp(log_var)))
-                loss = recon_loss + kl * config['beta']
+                kl = kl_divergence(mu, log_var, config['beta'])
+                loss = recon_loss + kl
 
             scaler.scale(loss).backward()
             scaler.step(opt)
             scaler.update()
             training_loss += loss  # / len(data)
 
-        scheduler.step()
+        # scheduler.step()
         validation_loss = 0
         for i, x in enumerate(valid_loader):
             x = x.to(device)
@@ -101,8 +104,8 @@ def train_search(config):
                 z, mu, log_var = model.encoder.forward(x)
                 x_hat = model.decoder.forward(z)
                 recon_loss = criterion(x_hat, x)
-                kl = torch.sum(-0.5 * (1 + log_var - mu ** 2 - torch.exp(log_var)))
-                validation_loss += recon_loss + kl * config['beta']
+                kl = kl_divergence(mu, log_var, config['beta'])
+                validation_loss += recon_loss + kl
 
         checkpoint_data = {
             "epoch": epoch,
@@ -121,23 +124,23 @@ def train_search(config):
 
 def main(num_samples=10, max_num_epochs=10):
     data_directory = "/home/midml/Desktop/Leo_project/Benjolin_MA/audio"
-    experiment_name = 'Ray Tune Bayesian Optimization 1'
+    experiment_name = 'Hyper param search 2'
     storage_path = '/home/midml/Desktop/Leo_project/Benjolin_MA/raytune'
 
     config = {
-        "hidden_dim": tune.choice([2 ** i for i in range(2, 5)]),
+        "hidden_dim": 16,
         "input_dim": 8,
         "latent_dim": 2,
         "lr": tune.loguniform(1e-4, 1e-2),
-        "batch_size": tune.choice([8, 16, 32, 64]),
-        "gamma": tune.uniform(0.9, 0.99),
-        "beta": tune.loguniform(1e-5, 1e-3),
+        "batch_size": 32,
+        "gamma": 1,
+        "beta": tune.loguniform(1e-4, 1e-2),
         "activation": tune.choice(["relu", "tanh", "sigmoid"])
     }
 
     scheduler = ASHAScheduler(
             max_t=max_num_epochs,
-            grace_period=3,
+            grace_period=2,
             reduction_factor=2,
         )
 
@@ -190,4 +193,4 @@ if __name__ == "__main__":
     feature_type = 'params'
     random_seed = 42
 
-    main(num_samples=100, max_num_epochs=15)
+    main(num_samples=20, max_num_epochs=10)

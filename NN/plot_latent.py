@@ -1,7 +1,7 @@
 from plot import *
 # from sklearn.manifold import TSNE
 
-data_dir = '/home/midml/Desktop/Leo_project/Benjolin_MA/param2latent_datasets/latent_dataset_param_vae8.npz'
+data_dir = '/home/midml/Desktop/Leo_project/Benjolin_MA/param2latent_datasets/latent_dataset_param_vae9.npz'
 dataset = np.load(data_dir)
 latent = dataset['latent_matrix']
 parameter = dataset['parameter_matrix']

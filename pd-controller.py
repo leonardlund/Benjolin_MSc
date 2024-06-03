@@ -5,18 +5,17 @@ import numpy as np
 from NN.latent2param_MLP import MLPRegressor
 from NN.VAE import VAE
 import torch
-from time import sleep
+import matplotlib.pyplot as plt
+import matplotlib as mpl
 
 
-def get_model():
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    # Example usage
-    # model = MLPRegressor(input_dim=2, hidden_dim=4, output_dim=8)
-    model = VAE(input_dim=8, hidden_dim=16, latent_dim=2, activation='tanh', device=device)
+def get_model(model_path, architecture='vae', device='cuda'):
+    if architecture == 'vae':
+        model = VAE(input_dim=8, hidden_dim=16, latent_dim=2, activation='tanh', device=device)
+    else:  # architecture == 'mlp'
+        model = MLPRegressor(input_dim=2, hidden_dim=16, output_dim=8)
     model = model.to(device).float()
-    # model_dir = "/home/midml/Desktop/Leo_project/Benjolin_MA/NN/models/mlp_regressor-1"
-    model_dir = "/home/midml/Desktop/Leo_project/Benjolin_MA/NN/models/param_VAE_6"
-    model.load_state_dict(torch.load(model_dir))
+    model.load_state_dict(torch.load(model_path))
     return model, device
 
 
@@ -38,21 +37,57 @@ def xy_handler(address, xy_symbol):
     xy = str(xy_symbol)
     xy = xy.split('-')[:2]
     xy = torch.tensor(np.array([int(xy[0]), int(xy[1])])).to(DEVICE).float()
-    params = MODEL.decoder.forward(z=xy)
-    params = list(params.cpu().detach().numpy() * 127)
+    old_min, old_max = 0, 127
+    new_min, new_max = -1.5, 1.1
+    xy[0] = ((xy[0] - old_min) / (old_max - old_min)) / (new_max - new_min) + new_min
+    new_min, new_max = -1, 1
+    xy[1] = ((xy[1] - old_min) / (old_max - old_min)) / (new_max - new_min) + new_min
+
+    if ARCHITECTURE == 'vae':
+        params = MODEL.decoder.forward(z=xy) * 127
+    else:
+        params = MODEL(xy) * 127
+    params = list(params.cpu().detach().numpy())
+
     print(params)
     params_message = '-'.join([str(int(param)) for param in params])
     client.send_message("/params", params_message)
-    # print("xy received... params sent!")
 
 
 if __name__ == "__main__":
-    MODEL, DEVICE = get_model()
+    model_path = "/home/midml/Desktop/Leo_project/Benjolin_MA/NN/models/mlp-bag3"
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    ARCHITECTURE = 'mlp'
+    MODEL, DEVICE = get_model(model_path, architecture=ARCHITECTURE, device=device)
     ip = "127.0.0.1"  # localhost
     send_port = 8000  # must match the port declared in Pure data
     listen_port = 6666
     client = udp_client.SimpleUDPClient(ip, send_port)  # sender
     dispatcher = Dispatcher()
+
+    mpl.use('Qt5Agg')
+
+    data_dir = '/home/midml/Desktop/Leo_project/Benjolin_MA/param2latent_datasets/bag-vae-3-latent.npz'
+    dataset = np.load(data_dir)
+    latent = dataset['latent_matrix']
+    parameter = dataset['parameter_matrix']
+
+
+    def on_click(event):
+        index = event.ind[0]
+        print(index)
+        params = parameter[index]
+        print(params)
+        params_message = '-'.join([str(int(param)) for param in params])
+        client.send_message("/params", params_message)
+
+
+    fig, ax = plt.subplots()
+    ax.scatter(latent[:, 0], latent[:, 1], alpha=0.8, s=0.3, picker=True)
+    connection_id = fig.canvas.mpl_connect('pick_event', on_click)
+    plt.isinteractive()
+    plt.show()
+
     server = BlockingOSCUDPServer((ip, listen_port), dispatcher)  # listener
 
     dispatcher.map("/print", print_handler)

@@ -52,6 +52,9 @@ with (alive_bar(total=len(data)) as bar):
         bar()
 
 param_data_directory = '/home/midml/Desktop/Leo_project/Benjolin_MA/param2latent_datasets/bag-vae-3-latent.npz'
-np.savez_compressed(param_data_directory, parameter_matrix=parameter_matrix, latent_matrix=latent_matrix)
+np.savez_compressed(param_data_directory,
+                    parameter_matrix=parameter_matrix,
+                    latent_matrix=latent_matrix,
+                    mfccs=bag_of_mfccs)
 
 print("Successfully saved parameters to ", param_data_directory)

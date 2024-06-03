@@ -17,14 +17,14 @@ class Encoder(nn.Module):
         self.dense2 = nn.Linear(self.hidden_dim, self.hidden_dim)
         self.activation2 = nn.Sigmoid() if activation == 'sigmoid' else nn.ReLU() if activation == 'relu' else nn.Tanh()
 
-        self.dense3 = nn.Linear(self.hidden_dim, self.hidden_dim)
+        self.dense3 = nn.Linear(self.hidden_dim, self.hidden_dim // 2)
         self.activation3 = nn.Sigmoid() if activation == 'sigmoid' else nn.ReLU() if activation == 'relu' else nn.Tanh()
 
         self.sequential = nn.Sequential(self.dense1, self.activation1, self.dense2, self.activation2,
                                         self.dense3, self.activation3)
 
-        self.denseMu = nn.Linear(self.hidden_dim, self.latent_dim)
-        self.denseLogVar = nn.Linear(self.hidden_dim, self.latent_dim)
+        self.denseMu = nn.Linear(self.hidden_dim // 2, self.latent_dim)
+        self.denseLogVar = nn.Linear(self.hidden_dim // 2, self.latent_dim)
 
     def reparameterization(self, mu, log_variance):
         sigma = 0.5 * torch.exp(log_variance)
@@ -48,10 +48,10 @@ class Decoder(nn.Module):
         self.latent_dim = latent_dim
         self.device = device
 
-        self.dense1 = nn.Linear(self.latent_dim, self.hidden_dim)
+        self.dense1 = nn.Linear(self.latent_dim, self.hidden_dim // 2)
         self.activation1 = nn.Sigmoid() if activation == 'sigmoid' else nn.ReLU() if activation == 'relu' else nn.Tanh()
 
-        self.dense2 = nn.Linear(self.hidden_dim, self.hidden_dim)
+        self.dense2 = nn.Linear(self.hidden_dim // 2, self.hidden_dim)
         self.activation2 = nn.Sigmoid() if activation == 'sigmoid' else nn.ReLU() if activation == 'relu' else nn.Tanh()
 
         self.dense3 = nn.Linear(self.hidden_dim, self.hidden_dim)

@@ -17,7 +17,7 @@ def train(vae, training_data, validation_data, epochs, opt='SGD', beta=1e-5, lr=
     opt = torch.optim.SGD(vae.parameters(), lr=lr) if opt == 'SGD' else torch.optim.Adam(vae.parameters(), lr=lr)
     scaler = GradScaler()
     # scheduler = torch.optim.lr_scheduler.ExponentialLR(opt, gamma=gamma)
-    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(opt, mode='min', factor=0.5, patience=5)
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(opt, mode='min', factor=0.5, patience=3)
     MSELoss = torch.nn.MSELoss(reduction='mean')
     for epoch in range(epochs):
         loss_this_epoch = 0

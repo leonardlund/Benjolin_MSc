@@ -4,6 +4,7 @@ from train import *
 import os
 import matplotlib.pyplot as plt
 from plot import plot_param_reconstructions
+from plot import plot_mfcc_spectrograms_side_by_side
 import random
 from torch.utils.data import SubsetRandomSampler
 
@@ -16,20 +17,20 @@ torch.set_default_dtype(torch.float32)
 data_directory = os.path.normpath(r"/home/midml/Desktop/Leo_project/Benjolin_MA/audio")
 CONTINUE_LEARNING = False
 bag_of_frames = True
-feature_type = 'params'
-n_mfccs = 4
+feature_type = 'mfcc-bag-of-frames'
+n_mfccs = 24
 batch_size = 32
 validation_split = .1
 shuffle_dataset = True
 random_seed = 42
-input_dim, hidden_dim, latent_dim = 8, 16, 2
-beta = 0.01
-learning_rate = 0.002
+input_dim, hidden_dim, latent_dim = n_mfccs * 2, n_mfccs, 2
+beta = 0.001
+learning_rate = 0.001
 gamma = 1
-epochs = 30
-activation = 'tanh'
+epochs = 8
+activation = 'relu'
 
-data = BenjoDataset(data_directory, features=feature_type, device=device)
+data = BenjoDataset(data_directory, features=feature_type, num_mfccs=n_mfccs, device=device)
 
 dataset_size = len(data)
 indices = list(range(dataset_size))
@@ -55,10 +56,10 @@ if CONTINUE_LEARNING:
 vae, train_losses, validation_losses = train(vae=vae, training_data=train_loader, validation_data=validation_loader,
                                              epochs=epochs, opt='ADAM', beta=beta, lr=learning_rate, gamma=gamma)
 
-save_dir = f"/home/midml/Desktop/Leo_project/Benjolin_MA/NN/models/param_VAE_10"
+save_dir = f"/home/midml/Desktop/Leo_project/Benjolin_MA/NN/models/bag-vae-3"
 torch.save(vae.state_dict(), save_dir)
-np.save(f"/home/midml/Desktop/Leo_project/Benjolin_MA/NN/models/param_VAE_10_train_losses.npy", train_losses)
-np.save(f"/home/midml/Desktop/Leo_project/Benjolin_MA/NN/models/param_VAE_10_val_losses.npy", train_losses)
+np.save(f"/home/midml/Desktop/Leo_project/Benjolin_MA/NN/models/bag-vae-3-train_losses.npy", train_losses)
+np.save(f"/home/midml/Desktop/Leo_project/Benjolin_MA/NN/models/bag-vae-3-val_losses.npy", train_losses)
 
 
 for _ in range(3):
@@ -74,7 +75,8 @@ for _ in range(3):
         example = example.cpu().detach().numpy().reshape(input_shape[1:])"""
 
     z_coords = np.round(z.cpu().detach().numpy(), 3)
-    plot_param_reconstructions(example.reshape(8), reconstructed.reshape(8))
+    # plot_param_reconstructions(example.reshape(8), reconstructed.reshape(8))
+    plot_mfcc_spectrograms_side_by_side(example, reconstructed, params_array, z_coords)
 
 plt.rcParams['figure.dpi'] = 150
 plt.plot(train_losses, label="Train")

@@ -36,6 +36,7 @@ class BenjoDataset(Dataset):
             shape = features.shape
             features += 25
             features /= 50
+            # features /= 25
             if self.features == 'mfcc-bag-of-frames':
                 mean = torch.mean(features, axis=1)
                 std = torch.std(features, axis=1)
@@ -45,8 +46,6 @@ class BenjoDataset(Dataset):
             else:
                 features = features.reshape((1, shape[0], shape[1]))
                 return features
-
-
 
     def get_benjo_params(self, index):
         path = self.files[index]

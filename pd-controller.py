@@ -67,10 +67,11 @@ if __name__ == "__main__":
 
     mpl.use('Qt5Agg')
 
-    data_dir = '/home/midml/Desktop/Leo_project/Benjolin_MA/param2latent_datasets/bag-vae-3-latent.npz'
+    data_dir = '/home/midml/Desktop/Leo_project/Benjolin_MA/param2latent_datasets/BAG-EXT-1-latent.npz'
     dataset = np.load(data_dir)
     latent = dataset['latent_matrix']
     parameter = dataset['parameter_matrix']
+    bag = dataset["mfccs"]
 
 
     def on_click(event):
@@ -78,6 +79,8 @@ if __name__ == "__main__":
         print(index)
         params = parameter[index]
         print(params)
+        # plt.imshow(bag[index, :, :].reshape((12, 12)), cmap="inferno")
+        # plt.draw()
         params_message = '-'.join([str(int(param)) for param in params])
         client.send_message("/params", params_message)
 

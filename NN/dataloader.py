@@ -5,10 +5,11 @@ from torch.utils.data import Dataset
 import torchaudio
 import librosa.feature
 import librosa
+import scipy.stats as stats
 
 
 class BenjoDataset(Dataset):
-    def __init__(self, data_dir, num_mfccs=90, features='mfcc-2d', device='cuda'):  # Adjust max_length as needed
+    def __init__(self, data_dir, num_mfccs=40, features='mfcc-2d', device='cuda'):  # Adjust max_length as needed
         self.data_dir = data_dir
         self.features = features
         self.device = device
@@ -30,23 +31,13 @@ class BenjoDataset(Dataset):
 
         if 'mel_spectrogram' == self.features:
             epsilon = 0.01
-            transform = torchaudio.transforms.MelSpectrogram(sample_rate).to(self.device)
+            transform = torchaudio.transforms.MelSpectrogram(sample_rate, n_mels=40).to(self.device)
             mel_spectrogram = transform(waveform)
-            log_mel_power = torch.log(torch.abs(mel_spectrogram) + epsilon)
-            return log_mel_power
+            log_mel_power = torch.log(torch.abs(mel_spectrogram) + epsilon) - np.log(epsilon)
+            return log_mel_power[:, :480]
 
-        if 'mfcc' in self.features:
-            MFCC = torchaudio.transforms.MFCC(sample_rate=sample_rate,
-                                              n_mfcc=self.num_mfccs,
-                                              melkwargs={"n_fft": 400, "hop_length": 160,
-                                                         "n_mels": 101, "center": False}).to(self.device)
-            features = MFCC(waveform)
-            features = torch.clip(features, min=-25, max=25)
-            shape = features.shape
-            features += 25
-            features /= 50
-
-            y = waveform.cpu().numpy()
+        if 'bag-of-frames' == self.features:
+            y, sample_rate = librosa.load(path)
             spectrogram = np.abs(librosa.stft(y))
             mfcc_librosa = librosa.feature.mfcc(y=y, sr=sample_rate, n_mfcc=self.num_mfccs)
             spectral_centroid = librosa.feature.spectral_centroid(S=spectrogram, sr=sample_rate)
@@ -54,23 +45,33 @@ class BenjoDataset(Dataset):
             spectral_rolloff = librosa.feature.spectral_rolloff(S=spectrogram, sr=sample_rate)
             spectral_contrast = librosa.feature.spectral_contrast(S=spectrogram, sr=sample_rate)
             zero_crossings = librosa.feature.zero_crossing_rate(y=y)
-            stacked_features = np.hstack((spectral_centroid, spectral_bandwidth,
-                                          spectral_rolloff, spectral_contrast, zero_crossings))
-            # stacked_delta_1st_order = librosa.feature.delta(stacked_features, axis=1)
-            # stacked_delta_2nd_order = librosa.feature.delta(stacked_features, axis=1, order=2)
-            #all_features = torch.tensor(np.vstack((stacked_features,
-            #                                       stacked_delta_1st_order))).to(self.device)
-            return stacked_features
-            # features /= 25
-            if self.features == 'mfcc-bag-of-frames':
-                mean = torch.mean(stacked_features, axis=1)
-                std = torch.std(stacked_features, axis=1)
-                features = torch.cat((mean, std), dim=0)
-                # features = features.reshape((1, 2 * self.num_mfccs))
-                return features
-            else:
-                features = features.reshape((1, shape[0], shape[1]))
-                return features
+            rms = librosa.feature.rms(y=y)
+            matrix = np.vstack((mfcc_librosa, spectral_centroid, spectral_rolloff, spectral_contrast,
+                                spectral_bandwidth, zero_crossings, rms))
+            """matrix -= self.means[:, np.newaxis]
+            matrix /= self.stds[:, np.newaxis]"""
+            summary_matrix = np.zeros((matrix.shape[0], 4))
+            for i in range(matrix.shape[0]):
+                this_row = matrix[i, :]
+                mean = np.mean(this_row)
+                std = np.std(this_row)
+                skewness = stats.skew(this_row)
+                kurtosis = stats.kurtosis(this_row)
+                summary_matrix[i, :] = np.array([mean, std, skewness, kurtosis])
+            return summary_matrix
+            # return torch.tensor(summary_matrix, dtype=torch.float32).to(self.device)
+
+        if 'mfcc' == self.features:
+            MFCC = torchaudio.transforms.MFCC(sample_rate=sample_rate,
+                                              n_mfcc=self.num_mfccs,
+                                              melkwargs={"n_fft": 400,
+                                                         "n_mels": 101, "center": False}).to(self.device)
+            features = MFCC(waveform)
+            features = torch.clip(features, min=-25, max=25)
+            shape = features.shape
+            features += 25
+            features /= 50
+            return features[:, :440]
 
     def get_benjo_params(self, index):
         path = self.files[index]

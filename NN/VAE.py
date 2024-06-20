@@ -32,7 +32,6 @@ class Encoder(nn.Module):
 
     def forward(self, x):
         h = self.sequential(x)
-
         mu = self.denseMu(h)
         log_variance = self.denseLogVar(h)
 
@@ -58,7 +57,7 @@ class Decoder(nn.Module):
         self.activation3 = nn.Sigmoid() if activation == 'sigmoid' else nn.ReLU() if activation == 'relu' else nn.Tanh()
 
         self.dense4 = nn.Linear(self.hidden_dim, self.input_dim)
-        self.activation4 = nn.Sigmoid()
+        self.activation4 = nn.ReLU()
 
         self.sequential = nn.Sequential(self.dense1, self.activation1, self.dense2, self.activation2, 
                                         self.dense3, self.activation3, self.dense4, self.activation4)

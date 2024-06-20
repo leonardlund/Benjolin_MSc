@@ -12,6 +12,7 @@ def kl_divergence(mu, log_var, beta):
 
 
 def train(vae, training_data, validation_data, epochs, opt='SGD', beta=1e-5, lr=1e-4, gamma=0.95, device='cuda'):
+    print("Commencing training")
     training_losses = np.array([])
     validation_losses = np.array([])
     opt = torch.optim.SGD(vae.parameters(), lr=lr) if opt == 'SGD' else torch.optim.Adam(vae.parameters(), lr=lr)
@@ -23,7 +24,7 @@ def train(vae, training_data, validation_data, epochs, opt='SGD', beta=1e-5, lr=
         loss_this_epoch = 0
         with alive_bar(total=len(training_data)) as bar:
             for i, x in enumerate(training_data):
-                # x = x.flatten()
+                x = x.reshape(x.shape[0], -1)
                 x = x.to(device)
                 opt.zero_grad()
 

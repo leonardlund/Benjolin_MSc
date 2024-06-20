@@ -16,14 +16,14 @@ device = "cuda"
 torch.set_default_dtype(torch.float32)
 data_directory = os.path.normpath(r"/home/midml/Desktop/Leo_project/Benjolin_MA/audio")
 CONTINUE_LEARNING = False
-bag_of_frames = True
-feature_type = 'mfcc-bag-of-frames'
+bag_of_frames = False
+feature_type = 'mel_spectrogram'
 n_mfccs = 24
 batch_size = 32
 validation_split = .1
 shuffle_dataset = True
 random_seed = 42
-input_dim, hidden_dim, latent_dim = n_mfccs * 2, n_mfccs, 2
+# input_dim, hidden_dim, latent_dim = n_mfccs * 2, n_mfccs, 2
 beta = 0.001
 learning_rate = 0.001
 gamma = 1
@@ -31,7 +31,11 @@ epochs = 8
 activation = 'relu'
 
 data = BenjoDataset(data_directory, features=feature_type, num_mfccs=n_mfccs, device=device)
-
+data_size = data[0].shape
+print(data_size)
+input_dim = data_size[0] * data_size[1]
+hidden_dim = input_dim // 2
+latent_dim = 2
 dataset_size = len(data)
 indices = list(range(dataset_size))
 split = int(np.floor(validation_split * dataset_size))
@@ -44,8 +48,9 @@ train_sampler = SubsetRandomSampler(train_indices)
 valid_sampler = SubsetRandomSampler(val_indices)
 train_loader = torch.utils.data.DataLoader(data, batch_size=batch_size, sampler=train_sampler)
 validation_loader = torch.utils.data.DataLoader(data, batch_size=batch_size, sampler=valid_sampler)
-
+print("dataloaders constructed")
 vae = VAE(input_dim=input_dim, hidden_dim=hidden_dim, latent_dim=latent_dim, activation=activation)  # batch_size=32
+print("model created")
 vae.to(device)
 
 if CONTINUE_LEARNING:
@@ -56,23 +61,22 @@ if CONTINUE_LEARNING:
 vae, train_losses, validation_losses = train(vae=vae, training_data=train_loader, validation_data=validation_loader,
                                              epochs=epochs, opt='ADAM', beta=beta, lr=learning_rate, gamma=gamma)
 
-save_dir = f"/home/midml/Desktop/Leo_project/Benjolin_MA/NN/models/bag-vae-3"
+save_dir = f"/home/midml/Desktop/Leo_project/Benjolin_MA/NN/models/melspec2d-1"
 torch.save(vae.state_dict(), save_dir)
-np.save(f"/home/midml/Desktop/Leo_project/Benjolin_MA/NN/models/bag-vae-3-train_losses.npy", train_losses)
-np.save(f"/home/midml/Desktop/Leo_project/Benjolin_MA/NN/models/bag-vae-3-val_losses.npy", train_losses)
+np.save(f"/home/midml/Desktop/Leo_project/Benjolin_MA/NN/models/melspec2d-1-losses.npy", train_losses)
+np.save(f"/home/midml/Desktop/Leo_project/Benjolin_MA/NN/models/melspec2d-1-losses-val.npy", train_losses)
 
 
 for _ in range(3):
     index = random.randint(0, len(data))
     params_array, params_string = data.get_benjo_params(index)
     example = data[index]
-    x_hat, z = vae.forward(example.reshape(1, 1, 2*n_mfccs).to(device))
+    """x_hat, z = vae.forward(example.reshape(1, 1, 2*n_mfccs).to(device))
     reconstructed = x_hat.cpu().detach().numpy().reshape((2, n_mfccs)).T
-    example = example.cpu().detach().numpy().reshape((2, n_mfccs)).T
-    """else:
-        x_hat, z = vae.forward(example.reshape(1, 1, input_shape[1], input_shape[2]).to(device))
-        reconstructed = x_hat.cpu().detach().numpy().reshape(input_shape[1:])
-        example = example.cpu().detach().numpy().reshape(input_shape[1:])"""
+    example = example.cpu().detach().numpy().reshape((2, n_mfccs)).T"""
+    x_hat, z = vae.forward(example.reshape(1, -1).to(device))
+    reconstructed = x_hat.cpu().detach().numpy().reshape((data_size[0], data_size[1]))
+    example = example.cpu().detach().numpy().reshape((data_size[0], data_size[1]))
 
     z_coords = np.round(z.cpu().detach().numpy(), 3)
     # plot_param_reconstructions(example.reshape(8), reconstructed.reshape(8))

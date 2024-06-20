@@ -3,6 +3,8 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset
 import torchaudio
+import librosa.feature
+import librosa
 
 
 class BenjoDataset(Dataset):
@@ -26,6 +28,13 @@ class BenjoDataset(Dataset):
         waveform, sample_rate = torchaudio.load(path, normalize=True, format='wav')
         waveform = waveform[0, :].to(self.device)
 
+        if 'mel_spectrogram' == self.features:
+            epsilon = 0.01
+            transform = torchaudio.transforms.MelSpectrogram(sample_rate).to(self.device)
+            mel_spectrogram = transform(waveform)
+            log_mel_power = torch.log(torch.abs(mel_spectrogram) + epsilon)
+            return log_mel_power
+
         if 'mfcc' in self.features:
             MFCC = torchaudio.transforms.MFCC(sample_rate=sample_rate,
                                               n_mfcc=self.num_mfccs,
@@ -36,12 +45,28 @@ class BenjoDataset(Dataset):
             shape = features.shape
             features += 25
             features /= 50
+
+            y = waveform.cpu().numpy()
+            spectrogram = np.abs(librosa.stft(y))
+            mfcc_librosa = librosa.feature.mfcc(y=y, sr=sample_rate, n_mfcc=self.num_mfccs)
+            spectral_centroid = librosa.feature.spectral_centroid(S=spectrogram, sr=sample_rate)
+            spectral_bandwidth = librosa.feature.spectral_bandwidth(S=spectrogram, sr=sample_rate)
+            spectral_rolloff = librosa.feature.spectral_rolloff(S=spectrogram, sr=sample_rate)
+            spectral_contrast = librosa.feature.spectral_contrast(S=spectrogram, sr=sample_rate)
+            zero_crossings = librosa.feature.zero_crossing_rate(y=y)
+            stacked_features = np.hstack((spectral_centroid, spectral_bandwidth,
+                                          spectral_rolloff, spectral_contrast, zero_crossings))
+            # stacked_delta_1st_order = librosa.feature.delta(stacked_features, axis=1)
+            # stacked_delta_2nd_order = librosa.feature.delta(stacked_features, axis=1, order=2)
+            #all_features = torch.tensor(np.vstack((stacked_features,
+            #                                       stacked_delta_1st_order))).to(self.device)
+            return stacked_features
             # features /= 25
             if self.features == 'mfcc-bag-of-frames':
-                mean = torch.mean(features, axis=1)
-                std = torch.std(features, axis=1)
-                features = torch.cat((mean, std))
-                features = features.reshape((1, 2 * self.num_mfccs))
+                mean = torch.mean(stacked_features, axis=1)
+                std = torch.std(stacked_features, axis=1)
+                features = torch.cat((mean, std), dim=0)
+                # features = features.reshape((1, 2 * self.num_mfccs))
                 return features
             else:
                 features = features.reshape((1, shape[0], shape[1]))

@@ -80,42 +80,52 @@ if __name__ == '__main__':
 
     bag_of_frames = True
     # feature_type = 'mfcc-bag-of-frames' if bag_of_frames else 'mfcc-2d'
-    feature_type = 'params'
-    n_mfccs = 4
+    feature_type = 'mfcc-bag-of-frames'
+    n_mfccs = 12
     data = BenjoDataset(data_directory, features=feature_type, device=device, num_mfccs=n_mfccs)
     data_loader = torch.utils.data.DataLoader(data, batch_size=1, shuffle=True)
 
     input_shape = data[0].shape
     print(input_shape)
-    input_dim = 2 * n_mfccs if bag_of_frames else input_shape[1] * input_shape[2]
-    hidden_dim = 16
-    latent_dim = 2
-
-    vae = VAE(input_dim=input_dim, hidden_dim=hidden_dim, latent_dim=latent_dim)  # batch_size=32
-
-    vae = vae.to(device)
-    save_dir = "/home/midml/Desktop/Leo_project/Benjolin_MA/NN/models/param_VAE_4"
-    vae.load_state_dict(torch.load(save_dir))
-    print("Loaded model from ", save_dir, " successfully!")
-    plt.rcParams['figure.dpi'] = 150
-
     for _ in range(3):
-        index = random.randint(65000, 70000)
-        params_array, params_string = data.get_benjo_params(index)
-        example = data[index]
-        if bag_of_frames:
-            z, mu, log_var = vae.encoder.forward(example.reshape(1, 1, 2 * n_mfccs).to(device))
-            x_hat = vae.decoder.forward(mu)
-            # x_hat, z = vae.forward(example.reshape(1, 1, 2 * n_mfccs).to(device))
-            reconstructed = x_hat.cpu().detach().numpy().reshape((2, n_mfccs)).T
-            example = example.cpu().detach().numpy().reshape((2, n_mfccs)).T
-        else:
-            x_hat, z = vae.forward(example.reshape(1, 1, input_shape[1], input_shape[2]).to(device))
-            reconstructed = x_hat.cpu().detach().numpy().reshape(input_shape[1:])
-            example = example.cpu().detach().numpy().reshape(input_shape[1:])
+        index = np.random.randint(0, 100)
+        plt.imshow(data[index], aspect='auto', norm='linear', interpolation='none')
+        plt.show()
+    if True:
+        pass
+    else:
+        bag_of_frames = False
+        n_mfccs = 10
+        input_shape = [10, 10]
+        input_dim = 2 * n_mfccs if bag_of_frames else input_shape[1] * input_shape[2]
+        hidden_dim = 16
+        latent_dim = 2
 
-        z_coords = np.round(z.cpu().detach().numpy(), 3)
-        # plot_mfcc_spectrograms_side_by_side(example, reconstructed, benjo_params=params_string, latent_space=z_coords)
-        plot_param_reconstructions(example.reshape(8), reconstructed.reshape(8))
+        vae = VAE(input_dim=input_dim, hidden_dim=hidden_dim, latent_dim=latent_dim)  # batch_size=32
 
-    print("finished plotting")
+        vae = vae.to('cuda')
+        save_dir = "/home/midml/Desktop/Leo_project/Benjolin_MA/NN/models/param_VAE_4"
+        vae.load_state_dict(torch.load(save_dir))
+        print("Loaded model from ", save_dir, " successfully!")
+        plt.rcParams['figure.dpi'] = 150
+
+        for _ in range(3):
+            index = random.randint(65000, 70000)
+            params_array, params_string = data.get_benjo_params(index)
+            example = data[index]
+            if bag_of_frames:
+                z, mu, log_var = vae.encoder.forward(example.reshape(1, 1, 2 * n_mfccs).to(device))
+                x_hat = vae.decoder.forward(mu)
+                # x_hat, z = vae.forward(example.reshape(1, 1, 2 * n_mfccs).to(device))
+                reconstructed = x_hat.cpu().detach().numpy().reshape((2, n_mfccs)).T
+                example = example.cpu().detach().numpy().reshape((2, n_mfccs)).T
+            else:
+                x_hat, z = vae.forward(example.reshape(1, 1, input_shape[1], input_shape[2]).to(device))
+                reconstructed = x_hat.cpu().detach().numpy().reshape(input_shape[1:])
+                example = example.cpu().detach().numpy().reshape(input_shape[1:])
+
+            z_coords = np.round(z.cpu().detach().numpy(), 3)
+            # plot_mfcc_spectrograms_side_by_side(example, reconstructed, benjo_params=params_string, latent_space=z_coords)
+            plot_param_reconstructions(example.reshape(8), reconstructed.reshape(8))
+
+        print("finished plotting")

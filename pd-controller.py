@@ -15,7 +15,7 @@ def get_model(model_path, architecture='vae', device='cuda'):
     else:  # architecture == 'mlp'
         model = MLPRegressor(input_dim=2, hidden_dim=16, output_dim=8)
     model = model.to(device).float()
-    model.load_state_dict(torch.load(model_path))
+    model.load_state_dict(torch.load(model_path, map_location=torch.device(device)))
     return model, device
 
 
@@ -55,7 +55,9 @@ def xy_handler(address, xy_symbol):
 
 
 if __name__ == "__main__":
-    model_path = "/home/midml/Desktop/Leo_project/Benjolin_MA/NN/models/mlp-bag3"
+    # model_path = "/home/midml/Desktop/Leo_project/Benjolin_MA/NN/models/mlp-bag3"
+    # model_path = r'C:\Users\Leonard\GitPrivate\Benjolin_MA\NN\models\BAG-EXT-1'
+    model_path = r'C:\Users\Leonard\GitPrivate\Benjolin_MA\NN\models\mlp-bag3'
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     ARCHITECTURE = 'mlp'
     MODEL, DEVICE = get_model(model_path, architecture=ARCHITECTURE, device=device)
@@ -67,7 +69,8 @@ if __name__ == "__main__":
 
     mpl.use('Qt5Agg')
 
-    data_dir = '/home/midml/Desktop/Leo_project/Benjolin_MA/param2latent_datasets/BAG-EXT-1-latent.npz'
+    # data_dir = '/home/midml/Desktop/Leo_project/Benjolin_MA/param2latent_datasets/BAG-EXT-1-latent.npz'
+    data_dir = r'C:\Users\Leonard\GitPrivate\Benjolin_MA\param2latent_datasets\BAG-EXT-1-latent.npz'
     dataset = np.load(data_dir)
     latent = dataset['latent_matrix']
     parameter = dataset['parameter_matrix']

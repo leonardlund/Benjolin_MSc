@@ -68,18 +68,24 @@ def get_spectral_flatness(audio_signal, frame_length=1024, hop_length=64):
     frame_data = audio_signal[start_index:end_index]
 
     abs_spectrum = cp.abs(np.fft.fft(frame_data))[:frame_length // 2 + 1]
-    spectral_flatness[frame_idx] = cp.exp(np.mean(cp.log(abs_spectrum + cp.spacing(1)))) / cp.mean(abs_spectrum)
+    spectral_flatness[frame_idx] = cp.exp(cp.mean(cp.log(abs_spectrum + cp.spacing(1)))) / cp.mean(abs_spectrum)
 
   return spectral_flatness
 
 class BenjoDataset(Dataset):
-    def __init__(self, data_dir, num_mfccs=13, features='mfcc-2d', device='cuda'):  # Adjust max_length as needed
+    def __init__(self, data_dir, num_mfccs=13, features='mfcc-2d', device='cuda', 
+                 fft_args={"win_length": 1024, "hop_size": 64, "pad": 0},
+                 weight_normalization=True,
+                 feature_dict={"mfcc": True, "centroid": True, "zcr": True, "rms": True, "flux": True, "flatness": True}):
         self.data_dir = data_dir
         self.features = features
         self.device = device
         self.num_mfccs = num_mfccs
-        self.win_length = 1024
-        self.hop_size = 64
+        self.win_length = fft_args["win_length"]
+        self.hop_size = fft_args["hop_size"]
+        self.pad = fft_args["pad"]
+        self.feature_dict = feature_dict
+        self.weight_normalization = weight_normalization
         self.files = [os.path.join(data_dir, f) for f in os.listdir(data_dir) if f.endswith(".wav")]
 
     def __len__(self):
@@ -94,41 +100,54 @@ class BenjoDataset(Dataset):
 
         waveform, sample_rate = torchaudio.load(path, normalize=False, format='wav')
         waveform = waveform[0, :].to(self.device)
+        cupy_waveform = cp.asarray(waveform)
 
         if 'bag-of-frames' == self.features:
+            feature_list = []
             MFCC = torchaudio.transforms.MFCC(sample_rate=sample_rate,
                                               n_mfcc=self.num_mfccs,
                                               melkwargs={"n_fft": 1024,
                                                          "win_length": self.win_length,
                                                          "hop_size": self.hop_size,
-                                                         "pad": 0,
+                                                         "pad": self.pad,
                                                          "n_mels": 101, "center": False}).to(self.device)
-            mfcc = MFCC(waveform) / self.num_mfccs
+            mfcc = MFCC(waveform)
+            if self.weight_normalization:
+               mfcc /= self.num_mfccs
+            feature_list.append(mfcc)
             
-            spectral_centroid = torchaudio.spectral_centroid(sample_rate=sample_rate,
-                                                             n_fft=self.win_length,
-                                                             win_length=self.win_length,
-                                                             hop_size=self.hop_size,
-                                                             pad=0)
-            cupy_waveform = cp.asarray(waveform)
-            
-            zero_crossings = torch.as_tensor(get_zero_crossings(cupy_waveform, self.win_length, self.hop_size))
-            rms = torch.as_tensor(get_rms(cupy_waveform, self.win_length, self.hop_size))
-            spectral_flux = torch.as_tensor(get_spectral_flux(cupy_waveform, self.win_length, self.hop_size))
-            spectral_flatness = torch.as_tensor(get_spectral_flatness(cupy_waveform, self.win_length, self.hop_size))
+            if self.feature_dict["centroid"]:
+              spectral_centroid = torchaudio.spectral_centroid(sample_rate=sample_rate,
+                                                               n_fft=self.win_length,
+                                                               win_length=self.win_length,
+                                                               hop_size=self.hop_size,
+                                                               pad=self.pad)
+              feature_list.append(spectral_centroid)
+            if self.feature_dict["zcr"]:
+              zero_crossings = torch.as_tensor(get_zero_crossings(cupy_waveform, self.win_length, self.hop_size))
+              feature_list.append(zero_crossings)
+            if self.feature_dict["rms"]:
+              rms = torch.as_tensor(get_rms(cupy_waveform, self.win_length, self.hop_size))
+              feature_list.append(rms)
+            if self.feature_dict["flux"]:
+              spectral_flux = torch.as_tensor(get_spectral_flux(cupy_waveform, self.win_length, self.hop_size))
+              feature_list.append(spectral_flux)
+            if self.feature_dict["flatness"]:
+              spectral_flatness = torch.as_tensor(get_spectral_flatness(cupy_waveform, self.win_length, self.hop_size))
+              feature_list.append(spectral_flatness)
 
-            matrix = np.vstack((mfcc, spectral_centroid, zero_crossings, rms, spectral_flux, spectral_flatness))
+            # matrix = np.vstack((mfcc, spectral_centroid, zero_crossings, rms, spectral_flux, spectral_flatness))
             """matrix -= self.means[:, np.newaxis]
             matrix /= self.stds[:, np.newaxis]"""
-            summary_matrix = np.zeros((matrix.shape[0], 2))
-            for i in range(matrix.shape[0]):
-                this_row = matrix[i, :]
-                mean = cp.mean(this_row)
-                std = cp.std(this_row)
+            summary_tensor = torch.zeros((len(feature_list), 2))
+            for i in range(len(feature_list)):
+                mean = torch.mean(feature_list[i])
+                std = torch.std(feature_list[i])
                 # skewness = stats.skew(this_row)
                 # kurtosis = stats.kurtosis(this_row)
-                summary_matrix[i, :] = cp.array([mean, std])
-            return summary_matrix
+                summary_tensor[i, 0] = mean
+                summary_tensor[i, 1] = std
+            return summary_tensor
 
         if 'mfcc' == self.features:
             MFCC = torchaudio.transforms.MFCC(sample_rate=sample_rate,

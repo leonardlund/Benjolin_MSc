@@ -3,9 +3,6 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset
 import torchaudio
-import librosa.feature
-import librosa
-import scipy.stats as stats
 
 
 class BenjoDatasetStats(Dataset):
@@ -32,8 +29,8 @@ class BenjoDatasetStats(Dataset):
 
         if 'bag-of-frames' == self.features:
             features = np.load(path)
-            features -= self.min
-            features /= (self.max - self.min)
+            features -= self.mean
+            features /= self.std
             return torch.tensor(features, dtype=torch.float32).to(self.device).flatten()
 
     def get_benjo_params(self, index):

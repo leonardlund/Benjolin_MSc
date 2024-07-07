@@ -1,4 +1,4 @@
-from alive_progress import alive_bar
+# from alive_progress import alive_bar
 import torch
 import numpy as np
 from torch.cuda.amp import GradScaler
@@ -22,26 +22,23 @@ def train(vae, training_data, validation_data, epochs, opt='SGD', beta=1e-5, lr=
     MSELoss = torch.nn.MSELoss(reduction='sum')
     for epoch in range(epochs):
         loss_this_epoch = 0
-        with alive_bar(total=len(training_data)) as bar:
-            for i, x in enumerate(training_data):
-                x = x.reshape(x.shape[0], -1)
-                x = x.to(device)
-                opt.zero_grad()
+        for i, x in enumerate(training_data):
+            x = x.reshape(x.shape[0], -1)
+            x = x.to(device)
+            opt.zero_grad()
 
-                with torch.autocast(device_type='cuda', dtype=torch.float16):
-                    z, mu, log_var = vae.encoder.forward(x)
-                    x_hat = vae.decoder.forward(z)
-                    recon_loss = MSELoss(x_hat, x)
-                    # kl = torch.mean(-0.5 * (1 + log_var - mu ** 2 - torch.exp(log_var))) * beta
-                    kl = kl_divergence(mu, log_var, beta)
-                    loss = recon_loss + kl
+            with torch.autocast(device_type='cuda', dtype=torch.float16):
+                z, mu, log_var = vae.encoder.forward(x)
+                x_hat = vae.decoder.forward(z)
+                recon_loss = MSELoss(x_hat, x)
+                # kl = torch.mean(-0.5 * (1 + log_var - mu ** 2 - torch.exp(log_var))) * beta
+                kl = kl_divergence(mu, log_var, beta)
+                loss = recon_loss + kl
 
-                scaler.scale(loss).backward()
-                scaler.step(opt)
-                scaler.update()
-                loss_this_epoch += loss  # / len(data)
-
-                bar()
+            scaler.scale(loss).backward()
+            scaler.step(opt)
+            scaler.update()
+            loss_this_epoch += loss  # / len(data)
 
         scheduler.step(loss_this_epoch)
         validation_loss = 0
@@ -74,26 +71,23 @@ def convVAE_train(cvae, training_data, validation_data, epochs, opt='SGD', beta=
     MSELoss = torch.nn.MSELoss(reduction='mean')
     for epoch in range(epochs):
         loss_this_epoch = 0
-        with alive_bar(total=len(training_data)) as bar:
-            for i, x in enumerate(training_data):
-                x = x.to(device)
-                x = x.view(x.shape[0], 1, x.shape[1], x.shape[2])
-                opt.zero_grad()
+        for i, x in enumerate(training_data):
+            x = x.to(device)
+            x = x.view(x.shape[0], 1, x.shape[1], x.shape[2])
+            opt.zero_grad()
 
-                with torch.autocast(device_type='cuda', dtype=torch.float16):
-                    z, mu, log_var = cvae.encoder.forward(x)
-                    x_hat = cvae.decoder.forward(z).view(x.shape[0], 1, x.shape[2], x.shape[3])
-                    recon_loss = MSELoss(x_hat, x)
-                    # kl = torch.mean(-0.5 * (1 + log_var - mu ** 2 - torch.exp(log_var))) * beta
-                    kl = kl_divergence(mu, log_var, beta)
-                    loss = recon_loss + kl
+            with torch.autocast(device_type='cuda', dtype=torch.float16):
+                z, mu, log_var = cvae.encoder.forward(x)
+                x_hat = cvae.decoder.forward(z).view(x.shape[0], 1, x.shape[2], x.shape[3])
+                recon_loss = MSELoss(x_hat, x)
+                # kl = torch.mean(-0.5 * (1 + log_var - mu ** 2 - torch.exp(log_var))) * beta
+                kl = kl_divergence(mu, log_var, beta)
+                loss = recon_loss + kl
 
-                scaler.scale(loss).backward()
-                scaler.step(opt)
-                scaler.update()
-                loss_this_epoch += loss  # / len(data)
-
-                bar()
+            scaler.scale(loss).backward()
+            scaler.step(opt)
+            scaler.update()
+            loss_this_epoch += loss  # / len(data)
 
         scheduler.step(loss_this_epoch)
         validation_loss = 0

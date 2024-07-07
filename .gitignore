@@ -1,6 +1,6 @@
 # dataset
 /audio
-/NN/__pycache__/
+/NN/__pycache__
 /.idea
 /raytune
 raytune

@@ -5,7 +5,7 @@ from train import *
 import numpy as np
 import cupy as cp
 import matplotlib.pyplot as plt
-from dataloader_stats import BenjoDatasetStats
+from NN.get_dataset_stats import BenjoDatasetStats
 
 
 data_directory = r"dir"

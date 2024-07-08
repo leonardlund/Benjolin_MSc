@@ -4,6 +4,7 @@ from train import *
 from torch.utils.data import SubsetRandomSampler
 import cupy as cp
 import numpy as np
+import pickle
 
 
 # ---- HYPER PARAMETERS -------
@@ -13,6 +14,7 @@ import numpy as np
  (and vice versa)
 """
 data_directory = r"/home/midml/Desktop/Leo_project/Benjolin_MA/audio"
+stat_dict_path = r"dir"
 # data_directory = "/home/midml/Desktop/Leo_project/Benjolin_MA/bag-of-frames-dataset"
 feature_type = 'bag-of-frames'
 n_mfccs = 13
@@ -38,9 +40,10 @@ torch.set_default_dtype(torch.float32)
 
 
 # ------- DATASET AND DATALOADER -----------
+stat_dict = pickle.load(open(stat_dict_path, "rb"))
 data = BenjoDataset(data_directory, features=feature_type, num_mfccs=n_mfccs, device=device,
                     fft_args=fft_args, weight_normalization=weight_normalization,
-                    feature_dict=feature_dict)
+                    feature_dict=feature_dict, stat_dictionary=stat_dict)
 data_size = data[0].shape
 dataset_size = len(data)
 indices = list(range(dataset_size))

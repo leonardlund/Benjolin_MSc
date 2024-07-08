@@ -4,6 +4,7 @@ import torch
 from torch.utils.data import Dataset
 import torchaudio
 import cupy as cp
+import pickle
 
 
 def get_rms(audio_signal, frame_length=1024, hop_length=64):
@@ -76,7 +77,8 @@ class BenjoDataset(Dataset):
     def __init__(self, data_dir, num_mfccs=13, features='mfcc-2d', device='cuda', 
                  fft_args={"win_length": 1024, "hop_size": 64, "pad": 0},
                  weight_normalization=True,
-                 feature_dict={"mfcc": True, "centroid": True, "zcr": True, "rms": True, "flux": True, "flatness": True}):
+                 feature_dict={"mfcc": True, "centroid": True, "zcr": True, "rms": True, "flux": True, "flatness": True},
+                 stat_dictionary=None):
         self.data_dir = data_dir
         self.features = features
         self.device = device
@@ -84,6 +86,10 @@ class BenjoDataset(Dataset):
         self.win_length = fft_args["win_length"]
         self.hop_size = fft_args["hop_size"]
         self.pad = fft_args["pad"]
+        if stat_dictionary:
+          self.stat_dictionary = pickle.load(stat_dictionary)
+        else:
+           self.stat_dictionary = stat_dictionary
         self.feature_dict = feature_dict
         self.weight_normalization = weight_normalization
         self.files = [os.path.join(data_dir, f) for f in os.listdir(data_dir) if f.endswith(".wav")]
@@ -112,9 +118,17 @@ class BenjoDataset(Dataset):
                                                          "pad": self.pad,
                                                          "n_mels": 101, "center": False}).to(self.device)
             mfcc = MFCC(waveform)
+            mean = torch.mean(mfcc, axis=1)
+            std = torch.std(mfcc, axis=1)
+            if self.stat_dictionary:
+               mean -= self.stat_dictionary["mfcc-mean"][0]
+               std -= self.stat_dictionary["mfcc-mean"][1]
+               mean /= self.stat_dictionary["mfcc-std"][0]
+               std /= self.stat_dictionary["mfcc-std"][1]
+            summary_tensor = torch.tensor([mean, std])
+
             if self.weight_normalization:
-               mfcc /= self.num_mfccs
-            feature_list.append(mfcc)
+              summary_tensor /= self.num_mfccs
             
             if self.feature_dict["centroid"]:
               spectral_centroid = torchaudio.spectral_centroid(sample_rate=sample_rate,
@@ -122,31 +136,50 @@ class BenjoDataset(Dataset):
                                                                win_length=self.win_length,
                                                                hop_size=self.hop_size,
                                                                pad=self.pad)
-              feature_list.append(spectral_centroid)
+              mean, std = cp.mean(spectral_centroid), cp.std(spectral_centroid)
+              sp_centroid = torch.tensor([mean, std])
+              if self.stat_dictionary:
+                sp_centroid -= self.stat_dictionary["centroid-mean"]
+                sp_centroid /= self.stat_dictionary["centroid-std"]
+              summary_tensor = torch.vstack(summary_tensor, sp_centroid)
+              
             if self.feature_dict["zcr"]:
-              zero_crossings = torch.as_tensor(get_zero_crossings(cupy_waveform, self.win_length, self.hop_size))
-              feature_list.append(zero_crossings)
+              zcr = torch.as_tensor(get_zero_crossings(cupy_waveform, self.win_length, self.hop_size))
+              mean, std = cp.mean(zcr), cp.std(zcr)
+              zcr = torch.tensor([mean, std])
+              if self.stat_dictionary:
+                zcr -= self.stat_dictionary["zcr-mean"]
+                zcr /= self.stat_dictionary["zcr-std"]
+              summary_tensor = torch.vstack(summary_tensor, zcr)
+            
             if self.feature_dict["rms"]:
               rms = torch.as_tensor(get_rms(cupy_waveform, self.win_length, self.hop_size))
-              feature_list.append(rms)
+              mean, std = cp.mean(rms), cp.std(rms)
+              rms = torch.tensor([mean, std])
+              if self.stat_dictionary:
+                rms -= self.stat_dictionary["rms-mean"]
+                rms /= self.stat_dictionary["rms-std"]
+              summary_tensor = torch.vstack(summary_tensor, rms)
+
             if self.feature_dict["flux"]:
               spectral_flux = torch.as_tensor(get_spectral_flux(cupy_waveform, self.win_length, self.hop_size))
-              feature_list.append(spectral_flux)
+              mean, std = cp.mean(spectral_flux), cp.std(spectral_flux)
+              spectral_flux = torch.tensor([mean, std])
+              if self.stat_dictionary:
+                spectral_flux -= self.stat_dictionary["flux-mean"]
+                spectral_flux /= self.stat_dictionary["flux-std"]
+              summary_tensor = torch.vstack(summary_tensor, spectral_flux)
+
+
             if self.feature_dict["flatness"]:
               spectral_flatness = torch.as_tensor(get_spectral_flatness(cupy_waveform, self.win_length, self.hop_size))
-              feature_list.append(spectral_flatness)
+              mean, std = cp.mean(spectral_flatness), cp.std(spectral_flatness)
+              spectral_flatness = torch.tensor([mean, std])
+              if self.stat_dictionary:
+                spectral_flatness -= self.stat_dictionary["flatness-mean"]
+                spectral_flatness /= self.stat_dictionary["flatness-std"]
+              summary_tensor = torch.vstack(summary_tensor, spectral_flatness)
 
-            # matrix = np.vstack((mfcc, spectral_centroid, zero_crossings, rms, spectral_flux, spectral_flatness))
-            """matrix -= self.means[:, np.newaxis]
-            matrix /= self.stds[:, np.newaxis]"""
-            summary_tensor = torch.zeros((len(feature_list), 2))
-            for i in range(len(feature_list)):
-                mean = torch.mean(feature_list[i])
-                std = torch.std(feature_list[i])
-                # skewness = stats.skew(this_row)
-                # kurtosis = stats.kurtosis(this_row)
-                summary_tensor[i, 0] = mean
-                summary_tensor[i, 1] = std
             return summary_tensor
 
         if 'mfcc' == self.features:

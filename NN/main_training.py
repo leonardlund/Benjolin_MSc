@@ -32,6 +32,8 @@ activation = 'relu'
 latent_dim = 16
 
 
+
+
 # ------- Torch settings --------------
 if not torch.cuda.is_available():
     raise Exception("NO GPU AVAILABLE. ABORTING TRAINING")

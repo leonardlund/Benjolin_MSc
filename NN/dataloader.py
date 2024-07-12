@@ -5,6 +5,7 @@ from torch.utils.data import Dataset
 import torchaudio
 import cupy as cp
 import pickle
+import zipfile
 
 
 def get_rms(audio_signal, frame_length=1024, hop_length=64):
@@ -92,7 +93,11 @@ class BenjoDataset(Dataset):
            self.stat_dictionary = stat_dictionary
         self.feature_dict = feature_dict
         self.weight_normalization = weight_normalization
-        self.files = [os.path.join(data_dir, f) for f in os.listdir(data_dir) if f.endswith(".wav")]
+
+
+        self.zip = zipfile.ZipFile(data_dir)
+        self.files = self.zip.namelist()[1:]
+        # self.files = [os.path.join(data_dir, f) for f in os.listdir(data_dir) if f.endswith(".wav")]
 
     def __len__(self):
         return len(self.files)
@@ -104,7 +109,8 @@ class BenjoDataset(Dataset):
             params_array, _ = self.get_benjo_params(index)
             return torch.tensor(params_array, dtype=torch.float32).to(self.device) / 126
 
-        waveform, sample_rate = torchaudio.load(path, normalize=False, format='wav')
+        file = self.zip.open(path)
+        waveform, sample_rate = torchaudio.load(file, normalize=False, format='wav')
         waveform = waveform[0, :].to(self.device)
         cupy_waveform = cp.asarray(waveform)
 

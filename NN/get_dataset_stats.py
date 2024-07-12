@@ -9,7 +9,7 @@ import pickle
 
 
 if __name__ == '__main__':
-    path = r"dir"
+    path = r"/cephyr/users/lundle/Alvis/benjo/audio_zip.zip"
     feature_type = 'bag-of-frames'
     n_mfccs = 13
     feature_dict = {"mfcc": True, "centroid": True, "zcr": True, "rms": True, "flux": True, "flatness": True}
@@ -23,6 +23,8 @@ if __name__ == '__main__':
     cupy_arr = cp.zeros(shape=(len(data), data.shape[0], data.shape[1]))
     for i in range(len(data)):
         cupy_arr[i, :, :] = cp.asarray(data[i])
+        if i % 1000 == 0:
+            print(i)
 
     mean = cp.asnumpy(cp.mean(cupy_arr, axis=0))
     std = cp.asnumpy(cp.std(cupy_arr, axis=0))
@@ -41,6 +43,6 @@ if __name__ == '__main__':
     stat_dictionary["flatness-mean"] = mean[17, :]
     stat_dictionary["flatness-std"] = std[17, :]
 
-    file_name = open(f"stat_dictionary{windowing_args['win_length']}-{windowing_args['hop_size']}.pkl","wb")
+    file_name = open(f"/cephyr/users/lundle/Alvis/benjo/stat_dictionary{windowing_args['win_length']}-{windowing_args['hop_size']}.pkl","wb")
     pickle.dump(stat_dictionary, file_name)
     file_name.close()

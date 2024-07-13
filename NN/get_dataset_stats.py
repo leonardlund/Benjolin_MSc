@@ -15,14 +15,18 @@ if __name__ == '__main__':
     feature_dict = {"mfcc": True, "centroid": True, "zcr": True, "rms": True, "flux": True, "flatness": True}
     windowing_args = {"win_length": 1024, "hop_size": 64, "pad": 0}
     weight_normalization = True
+    print("Is cuda available? ", torch.cuda.is_available())
 
     data = BenjoDataset(path, features=feature_type, num_mfccs=n_mfccs, device="cuda",
                     fft_args=windowing_args, weight_normalization=weight_normalization,
                     feature_dict=feature_dict)
 
-    cupy_arr = cp.zeros(shape=(len(data), data.shape[0], data.shape[1]))
+    cupy_arr = cp.zeros(shape=(len(data), data[0].shape[0], data[0].shape[1]))
     for i in range(len(data)):
+        print(data[i].cpu().numpy())
         cupy_arr[i, :, :] = cp.asarray(data[i])
+        if i > 10:
+            break
         if i % 1000 == 0:
             print(i)
 

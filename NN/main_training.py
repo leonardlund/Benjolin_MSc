@@ -5,6 +5,10 @@ from torch.utils.data import SubsetRandomSampler
 import cupy as cp
 import numpy as np
 import pickle
+import argparse
+import configparser
+import sys
+import os
 
 
 # ---- HYPER PARAMETERS -------
@@ -13,25 +17,61 @@ import pickle
 - For a feature to be excluded in the bag-of-frames feature tensor change the corresponding boolean to False
  (and vice versa)
 """
+# NOTE this code is stolen from Kivanc Tatar
+#Parse arguments
+parser = argparse.ArgumentParser()
+parser.add_argument('--config', type=str, default ='./default.ini' , help='path to the config file')
+args = parser.parse_args()
+
+#Get configs
+config_path = args.config
+config = configparser.ConfigParser(allow_no_value=True)
+try: 
+  config.read(config_path)
+except FileNotFoundError:
+  print('Config File Not Found at {}'.format(config_path))
+  sys.exit()
+
+
+sample_rate = config['audio'].getint('sample_rate')
+
+data_path = config['dataset'].get('data_path')
+model_path = config['dataset'].get('model_path')
+
+latent_dim = config['vae'].getint('latent_dim')
+kl_beta = config['vae'].getfloat('kl_beta')
+output_activation = config['vae'].get('output_activation')
+
+epochs = config['training'].getint('epochs')
+learning_rate = config['training'].getfloat('learning_rate')
+batch_size = config['training'].getint('batch_size')
+continue_training = config['training'].getboolean('continue_training')
+patience = config['training'].getint('patience')
+run_number = config['training'].getint('run_number')
+
+feature_type = config['features'].get('feature_type')
+hop_length = config['features'].getint('hop_length')
+window_length = config['features'].getint('window_length')
+pad = config['features'].getint('pad')
+n_mfccs = config['features'].getint('n_mfccs')
+mfcc = config['features'].getboolean('mfcc')
+centroid = config['features'].getboolean('centroid')
+zcr = config['features'].getboolean('zcr')
+rms = config['features'].getboolean('rms')
+flux = config['features'].getboolean('flux')
+flatness = config['features'].getboolean('flatness')
+weight_normalization = True
+window_args = {'win_length': window_length, 'hop_length':hop_length, 'pad': pad}
+feature_dict = {'mfcc': mfcc, 'rms': rms, 'zcr':zcr, 'centroid':centroid, 'flux':flux, 'flatness':flatness}
+
+
+
 # data_directory = r"/home/midml/Desktop/Leo_project/Benjolin_MA/audio"
 # stat_dict_path = r"dir"
 # data_directory = "/home/midml/Desktop/Leo_project/Benjolin_MA/bag-of-frames-dataset"
-data_directory = "/cephyr/users/lundle/Alvis/benjo/"
-feature_type = 'bag-of-frames'
-n_mfccs = 13
-feature_dict = {"mfcc": True, "centroid": True, "zcr": True, "rms": True, "flux": True, "flatness": True}
-fft_args = {"win_length": 1024, "hop_size": 64, "pad": 0}
-weight_normalization = True
-batch_size = 64
 validation_split = .1
 shuffle_dataset = True
 random_seed = 42
-beta = 0.001
-learning_rate = 0.001
-epochs = 10
-activation = 'relu'
-latent_dim = 16
-
 
 
 
@@ -42,10 +82,31 @@ device = "cuda"
 torch.set_default_dtype(torch.float32)
 
 
+output_directory = "cephyr/users/lundle/Alvis/benjo/runs/"
+
+# NOTE this code is also stolen from Kivanc
+if not continue_training:
+    run_id = run_number
+    while True:
+        try:
+            os.makedirs(output_directory + f'/run_{run_number}')
+            break
+        except OSError:
+            if output_directory.is_dir():
+                run_id = run_id + 1
+                continue
+            raise 'Broken directory'
+else:
+    raise 'TODO: handle this'
+
+print("Workspace: {}".format(output_directory))
+
+
 # ------- DATASET AND DATALOADER -----------
-stat_dict = pickle.load(open(stat_dict_path, "rb"))
-data = BenjoDataset(data_directory, features=feature_type, num_mfccs=n_mfccs, device=device,
-                    fft_args=fft_args, weight_normalization=weight_normalization,
+# stat_dict = pickle.load(open(stat_dict_path, "rb"))
+stat_dict = None
+data = BenjoDataset(data_path, features=feature_type, num_mfccs=n_mfccs, device=device,
+                    fft_args=window_args, weight_normalization=weight_normalization,
                     feature_dict=feature_dict, stat_dictionary=stat_dict)
 data_size = data[0].shape
 dataset_size = len(data)

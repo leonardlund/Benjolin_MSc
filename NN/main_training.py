@@ -13,9 +13,10 @@ import pickle
 - For a feature to be excluded in the bag-of-frames feature tensor change the corresponding boolean to False
  (and vice versa)
 """
-data_directory = r"/home/midml/Desktop/Leo_project/Benjolin_MA/audio"
-stat_dict_path = r"dir"
+# data_directory = r"/home/midml/Desktop/Leo_project/Benjolin_MA/audio"
+# stat_dict_path = r"dir"
 # data_directory = "/home/midml/Desktop/Leo_project/Benjolin_MA/bag-of-frames-dataset"
+data_directory = "/cephyr/users/lundle/Alvis/benjo/"
 feature_type = 'bag-of-frames'
 n_mfccs = 13
 feature_dict = {"mfcc": True, "centroid": True, "zcr": True, "rms": True, "flux": True, "flatness": True}

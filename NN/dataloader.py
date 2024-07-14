@@ -71,6 +71,7 @@ def get_spectral_flatness(audio_signal, frame_length=1024, hop_length=64):
     frame_data = audio_signal[start_index:end_index]
 
     abs_spectrum = cp.abs(np.fft.fft(frame_data))[:frame_length // 2 + 1]
+    abs_spectrum[abs_spectrum == 0] += 0.001
     spectral_flatness[frame_idx] = cp.exp(cp.mean(cp.log(abs_spectrum))) / cp.mean(abs_spectrum)
 
   return spectral_flatness
@@ -110,7 +111,11 @@ class BenjoDataset(Dataset):
             params_array, _ = self.get_benjo_params(index)
             return torch.tensor(params_array, dtype=torch.float32).to(self.device) / 126
         file = self.zip.open(path)
-        waveform, sample_rate = torchaudio.load(file, normalize=True, format='wav')
+        try:
+            waveform, sample_rate = torchaudio.load(file, normalize=True, format='wav')
+        except:
+            print("Unable to open file")
+            return None
         waveform = waveform[0, :].to(self.device)
         cupy_waveform = cp.asarray(waveform)
 
@@ -118,7 +123,7 @@ class BenjoDataset(Dataset):
             feature_list = []
             MFCC = torchaudio.transforms.MFCC(sample_rate=sample_rate,
                                               n_mfcc=self.num_mfccs,
-                                              melkwargs={"n_fft": 1024,
+                                              melkwargs={"n_fft": self.win_length,
                                                          "win_length": self.win_length,
                                                          "hop_length": self.hop_size,
                                                          "pad": self.pad,
@@ -142,7 +147,7 @@ class BenjoDataset(Dataset):
                                                                win_length=self.win_length,
                                                                hop_length=self.hop_size,
                                                                pad=self.pad).to(self.device)
-              sp_centroid = get_spectral_centroid(waveform)[13:]
+              sp_centroid = get_spectral_centroid(waveform+0.001)
               mean, std = torch.nanmean(sp_centroid), torch.std(sp_centroid)
               sp_centroid = torch.tensor([mean, std], device=self.device, dtype=torch.float32)
               if self.stat_dictionary:
@@ -202,7 +207,7 @@ class BenjoDataset(Dataset):
 
     def get_benjo_params(self, index):
         path = self.files[index]
-        params_string = path.removeprefix(self.data_dir + '/').removesuffix('.wav')
+        params_string = path.removeprefix(self.data_dir + '/').removeprefix('audio/').removesuffix('.wav')
         params_list = params_string.split('-')
         params_array = np.array(list(map(int, params_list)))
         return params_array, params_string

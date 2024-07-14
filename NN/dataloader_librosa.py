@@ -9,22 +9,33 @@ import zipfile
 
 
 class BenjoDataset(Dataset):
-    def __init__(self, data_dir, features='mfcc-2d', device='cuda', weight_normalization=True):
+    def __init__(self, data_dir, n_mfcc=13, features='mfcc-2d', device='cuda', mfcc_normalization=True, normalization=True):
         self.data_dir = data_dir
         self.device = device
         self.feature_dict = feature_dict
+        self.n_mfcc = n_mfcc
         self.weight_normalization = weight_normalization
-        self.data = np.load(self.data_dir)
+        self.npz = np.load(self.data_dir)
         self.shape = self.data.shape
-        self.data = cp.asarray(self.data)
+        self.data = cp.asarray(self.npz["features"])
+        self.params = self.npz["params"]
+        self.normalize()
 
     def __len__(self):
         return  self.shape[0]
 
     def __getitem__(self, index):
-        datapoint = self.data[index, :, :]
+        datapoint = cp.array(self.data[index, :, :])
+        if mfcc_normalization:
+            datapoint[:, :self.n_mfcc, :] /= self.n_mfcc
+        return torch.as_tensor(datapoint)
         
-
+        
+    def normalize(self):
+        means = cp.mean(self.data, axis=0)
+        std = cp.std(self.data, axis=0)
+        self.data -= means
+        self.data /= std
 
     def get_benjo_params(self, index):
         path = self.files[index]

@@ -12,22 +12,20 @@ from math import ceil
 def get_features(audio_signal, frame_length=1024, hop_length=64):
   num_frames = int(ceil(len(audio_signal) / hop_length))
   
-  rms_values = torch.zeros(num_frames, device="cuda")
-  zero_crossings = torch.zeros(num_frames, device="cuda")
-  spectral_flux = torch.zeros(num_frames, device="cuda")
-  spectral_flatness = torch.zeros(num_frames, device="cuda")
-  prev_abs_spectrum = torch.zeros(frame_length // 2 + 1, device="cuda")
+  rms_values = torch.zeros(num_frames)
+  zero_crossings = torch.zeros(num_frames)
+  spectral_flux = torch.zeros(num_frames)
+  spectral_flatness = torch.zeros(num_frames)
+  prev_abs_spectrum = torch.zeros(frame_length // 2 + 1)
   
-  window = torch.hann_window(frame_length, device="cuda")
+  window = torch.hann_window(len(frame_data))
   
   for frame_idx in range(num_frames):
     start_index = frame_idx * hop_length
     end_index = min(start_index + frame_length, len(audio_signal))
-    frame_data = audio_signal[start_index:end_index]
-    if len(frame_data) != len(window):
-      window = torch.hann_window(len(frame_data), device="cuda")
+    frame_data = audio_signal[start_index:end_index] * window
     
-    squared_signal = torch.pow(frame_data, 2)
+    squared_signal = torch.power(frame_data, 2)
     mean_squared = torch.mean(squared_signal)
     rms_value = torch.sqrt(mean_squared)
     rms_values[frame_idx] = rms_value
@@ -39,7 +37,7 @@ def get_features(audio_signal, frame_length=1024, hop_length=64):
     
     length = min(len(abs_spectrum), len(prev_abs_spectrum))
     spectral_flux[frame_idx] = torch.sum(torch.abs(abs_spectrum[:length] - prev_abs_spectrum[:length]))
-    prev_abs_spectrum = abs_spectrum
+    prev_abs_spectrum = abs_spectrum.copy()
     
     abs_spectrum[abs_spectrum == 0] += 0.001
     spectral_flatness[frame_idx] = torch.exp(torch.mean(torch.log(abs_spectrum))) / torch.mean(abs_spectrum)
@@ -156,6 +154,7 @@ class BenjoDataset(Dataset):
             print("Unable to open file")
             return None
         waveform = waveform[0, :].to(self.device)
+        # cupy_waveform = cp.asarray(waveform)
 
         if 'bag-of-frames' == self.features:
             feature_list = []
@@ -167,7 +166,14 @@ class BenjoDataset(Dataset):
                                                          "pad": self.pad,
                                                          "n_mels": 101, "center": False}).to(self.device)
             mfcc = MFCC(waveform)
-            length = mfcc.shape[1]
+            mean = torch.mean(mfcc, axis=1).reshape(13, 1)
+            std = torch.std(mfcc, axis=1).reshape(13, 1)
+            if self.stat_dictionary:
+               mean -= self.stat_dictionary["mfcc-mean"][0]
+               std -= self.stat_dictionary["mfcc-mean"][1]
+               mean /= self.stat_dictionary["mfcc-std"][0]
+               std /= self.stat_dictionary["mfcc-std"][1]
+            summary_tensor = torch.hstack([mean, std])
 
             if self.weight_normalization:
               summary_tensor /= self.num_mfccs
@@ -178,20 +184,52 @@ class BenjoDataset(Dataset):
                                                                win_length=self.win_length,
                                                                hop_length=self.hop_size,
                                                                pad=self.pad).to(self.device)
-              sp_centroid = get_spectral_centroid(waveform+0.001)[:length]
+              sp_centroid = get_spectral_centroid(waveform+0.001)
+              mean, std = torch.nanmean(sp_centroid), torch.std(sp_centroid)
+              sp_centroid = torch.tensor([mean, std], device=self.device, dtype=torch.float32)
+              if self.stat_dictionary:
+                sp_centroid -= self.stat_dictionary["centroid-mean"]
+                sp_centroid /= self.stat_dictionary["centroid-std"]
+              summary_tensor = torch.vstack([summary_tensor, sp_centroid])
               
+            rms, zcr, spectral_flux, spectral_flatness = get_features(cupy_waveform, self.win_length, self.hop_size)
               
-            rms, zcr, spectral_flux, spectral_flatness = get_features(waveform, self.win_length, self.hop_size)
+            if self.feature_dict["zcr"]:
+              # zcr = get_zero_crossings(cupy_waveform, self.win_length, self.hop_size)
+              mean, std = torch.mean(zcr), torch.std(zcr)
+              zcr = torch.tensor([mean, std], device=self.device, dtype=torch.float32)
+              if self.stat_dictionary:
+                zcr -= self.stat_dictionary["zcr-mean"]
+                zcr /= self.stat_dictionary["zcr-std"]
+              summary_tensor = torch.vstack([summary_tensor, zcr])
             
-            
-            
-            features_tensor = torch.vstack([mfcc, sp_centroid[:length], rms[:length], zcr[:length], spectral_flux[:length], spectral_flatness[:length]])
-            
-            mean = torch.mean(features_tensor, dim=1, keepdim=True)
-            std = torch.std(features_tensor, dim=1, keepdim=True)
-            
-            summary_tensor = torch.hstack([mean, std])
-              
+            if self.feature_dict["rms"]:
+              # rms = get_rms(cupy_waveform, self.win_length, self.hop_size)
+              mean, std = float(torch.nanmean(rms)), float(torch.std(rms))
+              rms = torch.tensor([mean, std], device=self.device, dtype=torch.float32)
+              if self.stat_dictionary:
+                rms -= self.stat_dictionary["rms-mean"]
+                rms /= self.stat_dictionary["rms-std"]
+              summary_tensor = torch.vstack([summary_tensor, rms])
+
+            if self.feature_dict["flux"]:
+              # spectral_flux = get_spectral_flux(cupy_waveform, self.win_length, self.hop_size)
+              mean, std = float(torch.nanmean(spectral_flux)), float(torch.std(spectral_flux))
+              spectral_flux = torch.tensor([mean, std], device=self.device, dtype=torch.float32)
+              if self.stat_dictionary:
+                spectral_flux -= self.stat_dictionary["flux-mean"]
+                spectral_flux /= self.stat_dictionary["flux-std"]
+              summary_tensor = torch.vstack([summary_tensor, spectral_flux])
+
+
+            if self.feature_dict["flatness"]:
+              # spectral_flatness = get_spectral_flatness(cupy_waveform, self.win_length, self.hop_size)[5:]
+              mean, std = float(torch.nanmean(spectral_flatness)), float(torch.std(spectral_flatness))
+              spectral_flatness = torch.tensor([mean, std], device=self.device, dtype=torch.float32)
+              if self.stat_dictionary:
+                spectral_flatness -= self.stat_dictionary["flatness-mean"]
+                spectral_flatness /= self.stat_dictionary["flatness-std"]
+              summary_tensor = torch.vstack([summary_tensor, spectral_flatness])
             return summary_tensor
 
         if 'mfcc' == self.features:
@@ -212,4 +250,5 @@ class BenjoDataset(Dataset):
         params_list = params_string.split('-')
         params_array = np.array(list(map(int, params_list)))
         return params_array, params_string
+
 

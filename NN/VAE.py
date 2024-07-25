@@ -60,7 +60,7 @@ class Decoder(nn.Module):
         self.activation4 = nn.ReLU()
 
         self.sequential = nn.Sequential(self.dense1, self.activation1, self.dense2, self.activation2, 
-                                        self.dense3, self.activation3, self.dense4, self.activation4)
+                                        self.dense3, self.activation3, self.dense4) #, self.activation4)
     
     def forward(self, z):
         x_hat = self.sequential(z)

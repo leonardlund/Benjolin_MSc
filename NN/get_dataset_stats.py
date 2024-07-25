@@ -14,9 +14,11 @@ if __name__ == '__main__':
     feature_type = 'bag-of-frames'
     n_mfccs = 13
     feature_dict = {"mfcc": True, "centroid": True, "zcr": True, "rms": True, "flux": True, "flatness": True}
-    windowing_args = {"win_length": 2048, "hop_size": 512, "pad": 0}
-    weight_normalization = True
+    windowing_args = {"win_length": 1024, "hop_size": 64, "pad": 0}
+    weight_normalization = False
     print("Is cuda available? ", torch.cuda.is_available())
+
+    savepath = "/cephyr/users/lundle/Alvis/benjo/alvis_dataset_short_window_1.npz"
 
     data = BenjoDataset(path, features=feature_type, num_mfccs=n_mfccs, device="cuda",
                     fft_args=windowing_args, weight_normalization=weight_normalization,
@@ -25,17 +27,21 @@ if __name__ == '__main__':
     torch_arr = torch.zeros((len(data), data[0].shape[0], data[0].shape[1]))
     params = np.zeros((len(data), 8))
     for i in range(len(data)):
-        # print(data[i].cpu().numpy())
         arr = data[i]
+        print(i)
         if arr == None:
             continue
         torch_arr[i, :, :] = arr
         params[i, :], _ = data.get_benjo_params(i)
         if i % 1000 == 0:
             print(i)
-    mean = torch.nanmean(torch_arr, axis=0).cpu().numpy()
-    std = torch.std(torch_arr, axis=0).cpu().numpy()
-    print(mean, std)
+            np.savez_compressed(savepath, features=torch_arr.cpu().numpy(), params=params)
+
+            
+    # mean = torch.nanmean(torch_arr, axis=0).cpu().numpy()
+    # std = torch.std(torch_arr, axis=0).cpu().numpy()
+    # print(mean, std)
+    """
     stat_dictionary = {}
     stat_dictionary["mfcc-mean"] = mean[:13, :]
     stat_dictionary["mfcc-std"] = std[:13, :]
@@ -51,7 +57,7 @@ if __name__ == '__main__':
     stat_dictionary["flatness-std"] = std[17, :]
 
     file_name = open(f"/cephyr/users/lundle/Alvis/benjo/stat_dictionary{windowing_args['win_length']}-{windowing_args['hop_size']}.pkl","wb")
-    savepath = "/cephyr/users/lundle/Alvis/benjo/alvis_dataset_long_window.npz"
     pickle.dump(stat_dictionary, file_name)
     file_name.close()
-    np.savez_compressed(savepath, features=cp.asnumpy(cupy_arr), params=params)
+    """
+    np.savez_compressed(savepath, features=torch_arr.cpu().numpy(), params=params)

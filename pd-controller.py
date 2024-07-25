@@ -70,11 +70,19 @@ if __name__ == "__main__":
     mpl.use('Qt5Agg')
 
     # data_dir = '/home/midml/Desktop/Leo_project/Benjolin_MA/param2latent_datasets/BAG-EXT-1-latent.npz'
-    data_dir = r'C:\Users\Leonard\GitPrivate\Benjolin_MA\param2latent_datasets\BAG-EXT-1-latent.npz'
+    # data_dir = r'C:\Users\Leonard\GitPrivate\Benjolin_MA\param2latent_datasets\BAG-EXT-1-latent.npz'
+    # data_dir = r"C:\Users\Leonard\GitPrivate\Benjolin_MA\param2latent_datasets\CVAE-1-latent.npz"
+    data_dir = r"C:\Users\Leonard\Desktop\benjo\latent_param_dataset_16.npz"
     dataset = np.load(data_dir)
-    latent = dataset['latent_matrix']
+    # latent = dataset['reduced_latent_matrix']
+    # print("Latent pca: ", latent.shape)
+    latent = dataset['reduced_latent_matrix']
+    # from sklearn.decomposition import PCA
+    #pca = PCA(n_components=3)
+    # latent = pca.fit_transform(latent)
+    # print(latent.shape)
     parameter = dataset['parameter_matrix']
-    bag = dataset["mfccs"]
+    # bag = dataset["mfccs"]
 
 
     def on_click(event):

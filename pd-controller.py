@@ -74,11 +74,11 @@ if __name__ == "__main__":
     # data_dir = r"C:\Users\Leonard\GitPrivate\Benjolin_MA\param2latent_datasets\CVAE-1-latent.npz"
     data_dir = r"C:\Users\Leonard\Desktop\benjo\latent_param_dataset_16.npz"
     dataset = np.load(data_dir)
-    # latent = dataset['reduced_latent_matrix']
-    # print("Latent pca: ", latent.shape)
     latent = dataset['reduced_latent_matrix']
+    # print("Latent pca: ", latent.shape)
+    # latent = dataset['latent_matrix']
     # from sklearn.decomposition import PCA
-    #pca = PCA(n_components=3)
+    # pca = PCA(n_components=2)
     # latent = pca.fit_transform(latent)
     # print(latent.shape)
     parameter = dataset['parameter_matrix']

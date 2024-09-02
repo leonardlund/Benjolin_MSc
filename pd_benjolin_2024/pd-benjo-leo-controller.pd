@@ -1,7 +1,8 @@
-#N struct 1025-point float x0 float y0 float xs float ys float fg float in float gridx float gridy;
-#N canvas 894 34 1318 991 12;
+#N struct 1005-point float x0 float y0 float xs float ys float fg float in float gridx float gridy;
+#N canvas 827 29 1318 991 12;
 #X declare -lib zexy;
 #X declare -path else;
+#X declare -lib zexy;
 #X text 290 711 DEREK HOLZER;
 #X text 290 776 BENJOLIN concept and analog design by Rob Hordijk 2009;
 #X obj 40 652 vs-seeme;
@@ -421,7 +422,7 @@
 #X restore 39 8 pd test;
 #X obj 56 412 dac~;
 #X text 290 754 idholzer@kth.se;
-#N canvas 139 132 793 732 OSCreceiver 1;
+#N canvas 139 132 793 732 OSCreceiver 0;
 #X obj 72 68 oscparse;
 #X obj 72 101 route list;
 #X obj 72 29 netreceive -u -b 5005;
@@ -737,6 +738,7 @@
 #X obj 448 513 print;
 #X obj 458 474 oscformat quit;
 #X obj 435 836 declare -path else;
+#X obj 375 580 declare -lib zexy;
 #X connect 4 0 5 0;
 #X connect 4 0 5 1;
 #X connect 4 0 2 0;

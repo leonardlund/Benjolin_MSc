@@ -7,6 +7,8 @@ from NN.VAE import VAE
 import torch
 import matplotlib.pyplot as plt
 import matplotlib as mpl
+from mpl_toolkits.mplot3d import axes3d
+
 
 
 def get_model(model_path, architecture='vae', device='cuda'):
@@ -96,8 +98,10 @@ if __name__ == "__main__":
         client.send_message("/params", params_message)
 
 
-    fig, ax = plt.subplots()
-    ax.scatter(latent[:, 0], latent[:, 1], alpha=0.8, s=0.3, picker=True)
+    # fig, ax = plt.subplots()
+    fig = plt.figure()
+    ax = fig.add_subplot(projection='3d')
+    ax.scatter(latent[:, 0], latent[:, 1], latent[:, 2], alpha=0.8, s=0.3, picker=True)
     connection_id = fig.canvas.mpl_connect('pick_event', on_click)
     plt.isinteractive()
     plt.show()

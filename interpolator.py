@@ -33,6 +33,55 @@ def interpolate_params(kd_tree, params, x, k, snap_threshold):
 
     return result.reshape((8))
 
+
+def find_next_point(kd_tree, latents, params, x, index_x, index_y, y, k=10, snap_threshold=0.001):
+    """
+    given two points, returns a list of points that describes the path of least 
+    resistance (in parameter space) between the two points
+    """
+    param_distance_0 = np.linalg.norm(params[index_x] - params[index_y])
+    latent_distance_0 = np.linalg.norm(x-y)
+
+    param_space_distances = np.array([])
+    latent_space_distances = np.array([])
+
+    distances, indices = kd_tree.query(x, k, workers=2)
+
+    for i in range(k):
+        param_distance = np.linalg.norm(params[indices[k]] - params[index_x])
+        latent_distance = np.linalg.norm(y - x)
+        param_space_distances.append(param_distance)
+        latent_space_distances.append(latent_distance)
+    
+    argmin = np.argmin(param_space_distances)
+
+    if latent_space_distances[argmin] < latent_distance_0:
+        return latents[indices[argmin]]
+    else:
+        raise Exception
+    
+
+        
+def create_path_between_2_points(kd_tree, latents, params, x, index_x, index_y, y, k=5, snap_threshold=0.001):
+    """
+    given two points, returns a list of points that describes the path of least 
+    resistance (in parameter space) between the two points
+    """
+    param_distance_0 = np.linalg.norm(params[index_x] - params[index_y])
+    latent_distance_0 = np.linalg.norm(x-y)
+
+    param_space_distances = []
+    latent_space_distances = []
+
+    distances, indices = kd_tree.query(x, k, workers=2)
+
+    for i in range(k):
+        param_distance = np.linalg.norm(params[indices[k]] - params[index_x])
+        latent_distance = np.linalg.norm(y - x)
+        param_space_distances.append(param_distance)
+        latent_space_distances.append(latent_distance)
+
     
     
+        
 

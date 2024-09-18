@@ -12,12 +12,60 @@ fs.readFile('scatterplot.txt', (err, data) => {
 // to be called through onclick 
 
 function addBox(randomcolor) { 
-    newBox = document.createElement("div"); 
+    newBox = document.createElement("div");
+    newBox.class = 'box';
+    newBox.id = 'box';
     newBox.style["background-color"] = randomcolor;
     newBox.style["height"] = '10vh';
     newBox.style["width"] = '60%';
+    newBox.draggable = 'true';
+    newBox.addEventListener('dragstart', dragStart);
+    newBox.addEventListener('dragenter', dragEnter)
+    newBox.addEventListener('dragover', dragOver);
+    newBox.addEventListener('dragleave', dragLeave);
+    newBox.addEventListener('drop', drop);
+
+
     document.getElementById("compose-bar").appendChild(newBox); 
 } 
+
+// handle the dragstart
+function dragStart(e) {
+   console.log('drag starts...');
+   e.dataTransfer.setData('text/plain', e.target.id);
+   //setTimeout(() => {
+   // e.target.classList.add('hide');
+   // }, 0);
+}
+
+function dragEnter(e) {
+    e.preventDefault();
+    e.target.classList.add('drag-over');
+}
+
+function dragOver(e) {
+    e.preventDefault();
+    e.target.classList.add('drag-over');
+}
+
+function dragLeave(e) {
+    e.target.classList.remove('drag-over');
+}
+
+function drop(e) {
+    e.target.classList.remove('drag-over');
+
+    // get the draggable element
+    const id = e.dataTransfer.getData('text/plain');
+    const draggable = document.getElementById(id);
+
+    // add it to the drop target
+    e.target.appendChild(draggable);
+
+    // display the draggable element
+    draggable.classList.remove('hide');
+}
+
 
 var myScatterPlot = document.getElementById('scatterPlot'), 
     x = new Float32Array([1,2,3,4,5,6,0,4,-1,-2,-3,-5,-6]),

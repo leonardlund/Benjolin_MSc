@@ -11,10 +11,12 @@ fs.readFile('scatterplot.txt', (err, data) => {
 // Define the addItem() function 
 // to be called through onclick 
 
+var numBoxes = 0
+
 function addBox(randomcolor) { 
     newBox = document.createElement("div");
     newBox.class = 'box';
-    newBox.id = 'box';
+    newBox.id = 'box ' + numBoxes;
     newBox.style["background-color"] = randomcolor;
     newBox.style["height"] = '10vh';
     newBox.style["width"] = '60%';
@@ -24,9 +26,9 @@ function addBox(randomcolor) {
     newBox.addEventListener('dragover', dragOver);
     newBox.addEventListener('dragleave', dragLeave);
     newBox.addEventListener('drop', drop);
-
-
     document.getElementById("compose-bar").appendChild(newBox); 
+    console.log(newBox.id);
+    numBoxes += 1;
 } 
 
 // handle the dragstart
@@ -59,13 +61,66 @@ function drop(e) {
     const id = e.dataTransfer.getData('text/plain');
     const draggable = document.getElementById(id);
 
+    const index_draggable = Number(id.split(' ')[1]);
+    const index_target = Number(e.target.id.split(' ')[1]);
+    //let count = e.target.parentElement.children[index_draggable]; 
+
+    const target_node = e.target.parentElement.children[index_target];
+    const draggable_node = e.target.parentElement.children[index_draggable];
+
+    console.log(index_draggable);
+    console.log(index_target);
+    console.log(target_node);
+    console.log(draggable_node);
+
+
+    const parent = e.target.parentElement;
+    exchangeElements(draggable_node, target_node);
+    new_target_node = document.getElementById('box '+ index_target);
+    new_draggable_node = document.getElementById('box '+ index_draggable);
+    new_target_node.id = 'box ' + (index_draggable);
+    new_draggable_node.id = 'box ' + (index_target);
+    //parent.replaceChild(draggable_node, target_node);
+    //parent.insertBefore(clone_target, draggable_node);
+
+    //target_node.replaceWith(draggable_node);
+
     // add it to the drop target
-    e.target.appendChild(draggable);
+    //e.target.appendChild(draggable);
+    //e.target.parentElement.insertBefore(e.target.parentElement.children[index_draggable], 
+    //    e.target.parentElement.children[index_target]);
+    //e.target.parentElement.insertBefore(e.target.parentElement.children[index_target],
+    //    e.target.parentElement.children[index_draggable+1]);
+    
+    //e.target.parentElement.children[index_target].before(e.target.parentElement.children[index_draggable])
+    //e.target.parentElement.children[index_draggable+1].before(e.target.parentElement.children[index_target+1])
+    //e.target.parentElement.children[index_draggable].id = 'box ' + (index_target);
+    //e.target.parentElement.children[index_target].id = 'box ' + (index_draggable);
+    console.log(target_node);
+    console.log(draggable_node);
 
     // display the draggable element
     draggable.classList.remove('hide');
 }
 
+function exchangeElements(element1, element2)
+{
+    var clonedElement1 = element1.cloneNode(true);
+    var clonedElement2 = element2.cloneNode(true);
+    clonedElement1.addEventListener('dragstart', dragStart);
+    clonedElement1.addEventListener('dragenter', dragEnter)
+    clonedElement1.addEventListener('dragover', dragOver);
+    clonedElement1.addEventListener('dragleave', dragLeave);
+    clonedElement1.addEventListener('drop', drop);
+    clonedElement2.addEventListener('dragstart', dragStart);
+    clonedElement2.addEventListener('dragenter', dragEnter)
+    clonedElement2.addEventListener('dragover', dragOver);
+    clonedElement2.addEventListener('dragleave', dragLeave);
+    clonedElement2.addEventListener('drop', drop);
+
+    element2.parentNode.replaceChild(clonedElement1, element2);
+    element1.parentNode.replaceChild(clonedElement2, element1);
+}
 
 var myScatterPlot = document.getElementById('scatterPlot'), 
     x = new Float32Array([1,2,3,4,5,6,0,4,-1,-2,-3,-5,-6]),

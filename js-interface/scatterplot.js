@@ -30,10 +30,10 @@ const compositionDict = {
 
 // add a box when a point on the scatterplot is clicked
 var numBoxes = 0
-function addBox(randomcolor) { 
+function addBox(randomcolor, x, y) { 
     newBox = document.createElement("div");
     newBox.className = 'box';
-    newBox.id = 'box ' + numBoxes;
+    newBox.id = 'box '+numBoxes+' '+x+' '+y;
     newBox.style["background-color"] = randomcolor;
     newBox.style["height"] = '10vh';
     newBox.style["width"] = '60%';
@@ -74,8 +74,21 @@ function drop(e) {
     // get box indices
     const index_draggable = Number(id.split(' ')[1]);
     const index_target = Number(e.target.id.split(' ')[1]);
+    var draggable_x = null;
+    var draggable_y = null;
+    var target_x = null;
+    var target_y = null;
+    if (id.split(' ').length > 2){
+        draggable_x = Number(id.split(' ')[2]);
+        draggable_y = Number(id.split(' ')[3]);
+    }
+    if (e.target.id.split(' ').length > 2){
+        target_x = Number(e.target.id.split(' ')[2]);
+        target_y = Number(e.target.id.split(' ')[3]);
+    }
 
     if (index_draggable != index_target){
+        
         // locate boxes to swap
         const target_node = e.target.parentElement.children[index_target];
         const draggable_node = e.target.parentElement.children[index_draggable];
@@ -83,12 +96,36 @@ function drop(e) {
         const parent = e.target.parentElement;
         // swap boxes
         exchangeElements(draggable_node, target_node);
-        new_target_node = document.getElementById('box '+ index_target);
-        new_draggable_node = document.getElementById('box '+ index_draggable);
-        new_target_node.id = 'box ' + (index_draggable);
-        new_draggable_node.id = 'box ' + (index_target);
-    }
 
+        // correct ids
+        if (target_x != null && draggable_x != null){
+            // draggable and target are boxes
+            new_target_node = document.getElementById('box '+ (index_target)+' '+target_x+' '+target_y);
+            new_draggable_node = document.getElementById('box '+ (index_draggable)+' '+draggable_x+' '+draggable_y); 
+            new_target_node.id = 'box ' + (index_draggable)+' '+(target_x)+' '+(target_y);
+            new_draggable_node.id = 'box ' + (index_target)+' '+(draggable_x)+' '+(draggable_y);
+        }
+        else if (target_x != null && draggable_x == null){
+            // target is box and draggable is arrow
+            new_target_node = document.getElementById('box '+ (index_target)+' '+target_x+' '+target_y);
+            new_draggable_node = document.getElementById('box '+ (index_draggable)); 
+            new_target_node.id = 'box ' + (index_draggable)+' '+target_x+' '+target_y;
+            new_draggable_node.id = 'box ' + (index_target);
+        }
+        else if (target_x == null && draggable_x != null){
+            // draggable is box and target is arrow
+            new_target_node = document.getElementById('box '+ (index_target));
+            new_draggable_node = document.getElementById('box '+ (index_draggable)+' '+draggable_x+' '+draggable_y); 
+            new_target_node.id = 'box ' + (index_draggable);
+            new_draggable_node.id = 'box ' + (index_target)+' '+draggable_x+' '+draggable_y;
+        }
+        else{
+            new_target_node = document.getElementById('box '+ (index_target));
+            new_draggable_node = document.getElementById('box '+ (index_draggable)); 
+            new_target_node.id = 'box ' + (index_draggable);
+            new_draggable_node.id = 'box ' + (index_target);
+        }
+    }
     // display the draggable element
     draggable.classList.remove('hide');
 }
@@ -162,8 +199,6 @@ myScatterPlot.on('plotly_click', function(data){
     
     // select a random color
     var randomcolor = '#'+(0x1000000+Math.random()*0xffffff).toString(16).substr(1,6);
-    // create box with random color
-    addBox(randomcolor); 
     // change color and size of selected point
     var pn='',
         tn='',
@@ -184,7 +219,11 @@ myScatterPlot.on('plotly_click', function(data){
     for(var i=0; i < data.points.length; i++){ //iterate over traces
         pts = 'x = '+data.points[i].x +'\ny = '+
             data.points[i].y.toPrecision(4) + '\n\n';
+        var x = data.points[i].x;
+        var y = data.points[i].y;
     }
+    // create box with random color
+    addBox(randomcolor, x, y); 
     console.log(pts);
     // send OSC message
 });

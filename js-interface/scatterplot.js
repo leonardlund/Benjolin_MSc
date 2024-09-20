@@ -7,6 +7,8 @@ fs.readFile('scatterplot.txt', (err, data) => {
   console.log(data.toString());
 });*/
 
+
+// dictionary containing instruction for playback
 const compositionDict = {
     Box: {
         coordinates: [0.2, 0.1],
@@ -17,8 +19,8 @@ const compositionDict = {
         duration: 5
     },
     Meander: {
-        pointsList_x: [],
-        pointsList_y: [],
+        pointsList_x: [0.4, -0.2, 0.1, 0.5],
+        pointsList_y: [0.2, 0.1, 1, 0.3],
         duration: 10
     },
     Box: {},
@@ -106,6 +108,21 @@ function exchangeElements(element1, element2){
     clonedElement2.addEventListener('dragleave', dragLeave);
     clonedElement2.addEventListener('drop', drop);
 
+    if (clonedElement1.children.length > 0){
+        clonedElement1.children[0].addEventListener('dragstart', dragImgInsideBox);
+        clonedElement1.children[0].addEventListener('dragenter', dragImgInsideBox)
+        clonedElement1.children[0].addEventListener('dragover', dragImgInsideBox);
+        clonedElement1.children[0].addEventListener('dragleave', dragImgInsideBox);
+        clonedElement1.children[0].addEventListener('drop', dragImgInsideBox);
+    }
+    if (clonedElement2.children.length > 0){
+        clonedElement2.children[0].addEventListener('dragstart', dragImgInsideBox);
+        clonedElement2.children[0].addEventListener('dragenter', dragImgInsideBox)
+        clonedElement2.children[0].addEventListener('dragover', dragImgInsideBox);
+        clonedElement2.children[0].addEventListener('dragleave', dragImgInsideBox);
+        clonedElement2.children[0].addEventListener('drop', dragImgInsideBox);
+    }
+
     element2.parentNode.replaceChild(clonedElement1, element2);
     element1.parentNode.replaceChild(clonedElement2, element1);
 }
@@ -172,21 +189,113 @@ myScatterPlot.on('plotly_click', function(data){
     // send OSC message
 });
 
+// add new crossfade
+function addCrossfade(){
+
+    const newImg = document.createElement("img");
+    newImg.src = "imgs/arrow.png";
+    newImg.id = "img-inside-box";
+    newImg.className = "img-fluid img-inside-box";
+    newImg.style["height"] = '80%';
+
+    const newCrossfade = document.createElement("div");
+    newCrossfade.className = 'crossfade text-center';
+    newCrossfade.id = 'box ' + numBoxes;
+    newCrossfade.style["background-color"] = 'DodgerBlue';
+    newCrossfade.style["height"] = '10vh';
+    newCrossfade.style["width"] = '60%';
+    newCrossfade.draggable = 'true';
+    
+    newCrossfade.appendChild(newImg)
+    document.getElementById("compose-bar").appendChild(newCrossfade); 
+
+    newCrossfade.addEventListener('dragstart', dragStart);
+    newCrossfade.addEventListener('dragenter', dragEnter)
+    newCrossfade.addEventListener('dragover', dragOver);
+    newCrossfade.addEventListener('dragleave', dragLeave);
+    newCrossfade.addEventListener('drop', drop);
+
+    newImg.addEventListener('dragstart', dragImgInsideBox);
+    newImg.addEventListener('dragenter', dragImgInsideBox)
+    newImg.addEventListener('dragover', dragImgInsideBox);
+    newImg.addEventListener('dragleave', dragImgInsideBox);
+    newImg.addEventListener('drop', dragImgInsideBox);
+
+    console.log(newCrossfade.id);
+    numBoxes += 1;
+
+}
+
+// stop images to be draggable
+function dragImgInsideBox(e) {
+    e.preventDefault();
+    e.stopPropagation(); 
+}
+
+// add new meander
+function addMeander(){
+
+    const newImg = document.createElement("img");
+    newImg.src = "imgs/zigzag.png";
+    newImg.id = "img-inside-box";
+    newImg.className = "img-fluid img-inside-box";
+    newImg.style["height"] = '80%';
+
+    const newMeander = document.createElement("div");
+    newMeander.className = 'meander text-center';
+    newMeander.id = 'box ' + numBoxes;
+    newMeander.style["background-color"] = 'DodgerBlue';
+    newMeander.style["height"] = '10vh';
+    newMeander.style["width"] = '60%';
+    newMeander.draggable = 'true';
+    
+    newMeander.appendChild(newImg)
+    document.getElementById("compose-bar").appendChild(newMeander); 
+
+    newMeander.addEventListener('dragstart', dragStart);
+    newMeander.addEventListener('dragenter', dragEnter)
+    newMeander.addEventListener('dragover', dragOver);
+    newMeander.addEventListener('dragleave', dragLeave);
+    newMeander.addEventListener('drop', drop);
+
+    newImg.addEventListener('dragstart', dragImgInsideBox);
+    newImg.addEventListener('dragenter', dragImgInsideBox)
+    newImg.addEventListener('dragover', dragImgInsideBox);
+    newImg.addEventListener('dragleave', dragImgInsideBox);
+    newImg.addEventListener('drop', dragImgInsideBox);
+
+    console.log(newMeander.id);
+    numBoxes += 1;
+
+}
+
+// handling navbar elements
+const insert_crossfade = document.getElementById("insert-crossfade"); 
+insert_crossfade.addEventListener("click", addCrossfade); 
+const insert_meander = document.getElementById("insert-meander"); 
+insert_meander.addEventListener("click", addMeander); 
+
+
+
 // handle click on box
 // data structure with boxes and points and order
 // add arrow
 // play the whole sequence
 
 
-// possible things to do: 
+// things to do: 
+// make navbar on top
+// update data structure on event
 // on click of point in graph: create a box, color the clicked point, listen to how that sounds like
 // on click on box: highlight point, listen to how that point sounds like
 // on click+drag on box: exchange box position in the timeline with box over which it is dragged
 // on 
 // how to add arrows?
 
+
+
 // OSC communication
-var oscPort = new osc.WebSocketPort({
+/*var oscPort = new osc.WebSocketPort({
     url: "ws://localhost:8081", // URL to your Web Socket server.
     metadata: true
 });
@@ -195,4 +304,4 @@ oscPort.open();
 
 oscPort.on("message", function (oscMsg) {
     console.log("An OSC message just arrived!", oscMsg);
-});
+});*/

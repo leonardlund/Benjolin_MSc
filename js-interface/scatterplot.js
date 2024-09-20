@@ -7,15 +7,30 @@ fs.readFile('scatterplot.txt', (err, data) => {
   console.log(data.toString());
 });*/
 
+const compositionDict = {
+    Box: {
+        coordinates: [0.2, 0.1],
+        duration: 10
+    },
+    Box: {
+        coordinates: [0.4, -0.2],
+        duration: 5
+    },
+    Meander: {
+        pointsList_x: [],
+        pointsList_y: [],
+        duration: 10
+    },
+    Box: {},
+    Crossfade:{}
+};
 
-// Define the addItem() function 
-// to be called through onclick 
 
+// add a box when a point on the scatterplot is clicked
 var numBoxes = 0
-
 function addBox(randomcolor) { 
     newBox = document.createElement("div");
-    newBox.class = 'box';
+    newBox.className = 'box';
     newBox.id = 'box ' + numBoxes;
     newBox.style["background-color"] = randomcolor;
     newBox.style["height"] = '10vh';
@@ -31,29 +46,22 @@ function addBox(randomcolor) {
     numBoxes += 1;
 } 
 
-// handle the dragstart
+// dragging and dropping boxes
 function dragStart(e) {
-   console.log('drag starts...');
+   //console.log('drag starts...');
    e.dataTransfer.setData('text/plain', e.target.id);
-   //setTimeout(() => {
-   // e.target.classList.add('hide');
-   // }, 0);
 }
-
 function dragEnter(e) {
     e.preventDefault();
     e.target.classList.add('drag-over');
 }
-
 function dragOver(e) {
     e.preventDefault();
     e.target.classList.add('drag-over');
 }
-
 function dragLeave(e) {
     e.target.classList.remove('drag-over');
 }
-
 function drop(e) {
     e.target.classList.remove('drag-over');
 
@@ -61,22 +69,23 @@ function drop(e) {
     const id = e.dataTransfer.getData('text/plain');
     const draggable = document.getElementById(id);
 
+    // get box indices
     const index_draggable = Number(id.split(' ')[1]);
     const index_target = Number(e.target.id.split(' ')[1]);
-    //let count = e.target.parentElement.children[index_draggable]; 
 
-    const target_node = e.target.parentElement.children[index_target];
-    const draggable_node = e.target.parentElement.children[index_draggable];
-
-    console.log('swapping box '+ index_draggable + ' with box '+ index_target);
-
-
-    const parent = e.target.parentElement;
-    exchangeElements(draggable_node, target_node);
-    new_target_node = document.getElementById('box '+ index_target);
-    new_draggable_node = document.getElementById('box '+ index_draggable);
-    new_target_node.id = 'box ' + (index_draggable);
-    new_draggable_node.id = 'box ' + (index_target);
+    if (index_draggable != index_target){
+        // locate boxes to swap
+        const target_node = e.target.parentElement.children[index_target];
+        const draggable_node = e.target.parentElement.children[index_draggable];
+        console.log('swapping box '+ index_draggable + ' with box '+ index_target);
+        const parent = e.target.parentElement;
+        // swap boxes
+        exchangeElements(draggable_node, target_node);
+        new_target_node = document.getElementById('box '+ index_target);
+        new_draggable_node = document.getElementById('box '+ index_draggable);
+        new_target_node.id = 'box ' + (index_draggable);
+        new_draggable_node.id = 'box ' + (index_target);
+    }
 
     // display the draggable element
     draggable.classList.remove('hide');
@@ -101,7 +110,7 @@ function exchangeElements(element1, element2){
     element1.parentNode.replaceChild(clonedElement2, element1);
 }
 
-
+// create scatterplot
 var myScatterPlot = document.getElementById('scatterPlot'), 
     x = new Float32Array([1,2,3,4,5,6,0,4,-1,-2,-3,-5,-6]),
     y = new Float32Array([1,6,3,6,1,3,8,2,-3,-7,-2,-8,-6]),
@@ -129,9 +138,9 @@ var myScatterPlot = document.getElementById('scatterPlot'),
         title:'Latent space'
     };
 
-
 Plotly.newPlot('scatterPlot', data, layout);
 
+// handle clicks on scatterplot
 myScatterPlot.on('plotly_click', function(data){
     
     // select a random color
@@ -163,22 +172,10 @@ myScatterPlot.on('plotly_click', function(data){
     // send OSC message
 });
 
-
-/*
-myScatterPlot.on('plotly_click', function(data){
-    var pn='',
-        tn='',
-        colors=[];
-    for(var i=0; i < data.points.length; i++){ //iterate over traces
-      pn = data.points[i].pointNumber;
-      tn = data.points[i].curveNumber;
-      colors = data.points[i].data.marker.color;
-    };
-    colors[pn] = '#C54C82';
-    
-    var update = {'marker':{color: colors, size:30}};
-    Plotly.restyle('scatterPlot', update, [tn]);
-  });*/
+// handle click on box
+// data structure with boxes and points and order
+// add arrow
+// play the whole sequence
 
 
 // possible things to do: 
@@ -187,3 +184,15 @@ myScatterPlot.on('plotly_click', function(data){
 // on click+drag on box: exchange box position in the timeline with box over which it is dragged
 // on 
 // how to add arrows?
+
+// OSC communication
+var oscPort = new osc.WebSocketPort({
+    url: "ws://localhost:8081", // URL to your Web Socket server.
+    metadata: true
+});
+
+oscPort.open();
+
+oscPort.on("message", function (oscMsg) {
+    console.log("An OSC message just arrived!", oscMsg);
+});

@@ -1,15 +1,19 @@
 /* 
-logic: 
-- you can't click on point if it's the last one being clicked
-
 todo:
-- click on box(highlight point if click on box and highlight box if click on point)
 - click on arrows
+- update duration when larger box
+- highlighting arrows
+- time limit or infinite composition bar?
+- garbage bin to remove elements dynamically
 - OSC integration
 - play and stop buttons
-- longer box --> larger marker
 - load latent space from file
 - latent space array as global var
+- completely responsive webpage
+- touchscreen?
+
+logic: 
+- you can't click on point if it's the last one being clicked
 */
 
 // Read lantent space coordinates
@@ -43,6 +47,116 @@ class Crossfade{
 
 const compositionArray = [];
 
+// create scatterplot
+var myScatterPlot = document.getElementById('scatterPlot'), 
+    x = new Float32Array([1,2,3,4,5,6,0,4,-1,-2,-3,-5,-6]),
+    y = new Float32Array([1,6,3,6,1,3,8,2,-3,-7,-2,-8,-6]),
+    colors = ['#00000','#00000','#00000','#00000','#00000','#00000','#00000',
+            '#00000','#00000','#00000','#00000','#00000','#00000'],
+    sizes = [10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10],
+    opacity = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+    data = [ { 
+        x:x, y:y, 
+        type:'scatter',
+        mode:'markers',
+        marker:{size:sizes, color:colors, opacity:opacity} 
+    } ],
+    line = {
+
+    },
+    layout = {
+        xaxis: {
+            range: [ -10, 10 ],
+            showgrid: true,
+            zeroline: false,
+            showline: false
+        },
+        yaxis: {
+            range: [ -10, 10 ],
+            showgrid: true,
+            zeroline: false,
+            showline: false
+        },
+        title:'Latent space',
+        showlegend: false
+    };
+
+Plotly.newPlot('scatterPlot', data, layout);
+
+// handle clicks on scatterplot
+myScatterPlot.on('plotly_click', function(data){
+    
+    if (data.points[0].curveNumber == 0){
+    // select a random color
+    var randomcolor = '#'+(0x1000000+Math.random()*0xffffff).toString(16).substr(1,6);
+    // change color and size of selected point
+    var pn='',
+        tn='',
+        colors=[];
+    
+    // only take into account trace 0
+    pn = data.points[0].pointNumber;
+    tn = data.points[0].curveNumber;
+    colors = data.points[0].data.marker.color;
+    sizes = data.points[0].data.marker.size;
+    colors[pn] = randomcolor;
+    sizes[pn] = 15;
+    var update = {'marker':{color: colors, size:sizes, opacity:opacity}};
+    Plotly.restyle('scatterPlot', update, [tn]);
+
+    var pts = '';
+    pts = 'x = '+data.points[0].x +'\ny = '+data.points[0].y.toPrecision(4) + '\n\n';
+    var x = data.points[0].x;
+    var y = data.points[0].y;
+
+    // create box with random color
+    addBox(randomcolor, x, y); 
+    console.log(pts);
+    // send OSC message
+
+    }
+});
+
+
+// check for resize event
+const observer = new ResizeObserver(function(mutations) {
+    //console.clear()
+    var resizedID = mutations[0].target.attributes.id.nodeValue;
+    var resized_newHeight = mutations[0].contentRect.height; // height in px
+    // scale px to width of marker: 100px = 20px marker
+    console.log(resizedID);
+
+    // update box duration in composition array
+    var boxNumber = Number(resizedID.split(' ')[1]);
+    var heightToSec = 1;
+    compositionArray[boxNumber].duration = resized_newHeight * heightToSec;
+
+    // check if resized element is a box
+    if (resizedID.split(' ').length > 2){
+        resize_x = Number(resizedID.split(' ')[2]);
+        resize_y = Number(resizedID.split(' ')[3]);
+    }
+    // find index of resized element in array
+    var index = findIndexGivenCoords(resize_x, resize_y);
+    //resize marker
+    var heightToPointSize = 0.25;
+    sizes[index] = resized_newHeight * heightToPointSize;
+    var update = {'marker':{color:colors, size:sizes, opacity:opacity}};
+    Plotly.restyle('scatterPlot', update, 0);
+    
+    //console.log(mutations[0].target.attributes.id);
+    //console.log(mutations[0].contentRect.width, mutations[0].contentRect.height);
+});
+
+function findIndexGivenCoords(x_coord, y_coord){
+    // assumes there are no duplicates
+    for (var i = 0; i < x.length; ++i) {
+        if(x[i] == x_coord && y[i] == y_coord){
+            return i;
+        }
+    }
+}
+
 // add a box when a point on the scatterplot is clicked
 var numBoxes = 0
 function addBox(randomcolor, x, y) {
@@ -52,6 +166,8 @@ function addBox(randomcolor, x, y) {
     newBox.style["background-color"] = randomcolor;
     newBox.style["height"] = '10vh';
     newBox.style["width"] = '60%';
+    newBox.style["resize"] = 'vertical';
+    newBox.style["overflow-x"] = 'auto';
     newBox.draggable = 'true';
     newBox.addEventListener('dragstart', dragStart);
     newBox.addEventListener('dragenter', dragEnter)
@@ -65,6 +181,7 @@ function addBox(randomcolor, x, y) {
     compositionArray.push(new Box(x, y, duration));
     render();
     console.log(compositionArray);
+    observer.observe(newBox);
 }
 
 function clickOnBox(e) {
@@ -72,53 +189,90 @@ function clickOnBox(e) {
 }
 
 // highlight click on box
-document.addEventListener('click', event => {
+let clicked = false;
+document.addEventListener('mousedown', e => { clicked = true; });
+document.addEventListener('mousemove', e => { clicked = false; });
+document.addEventListener('mouseup', event => {
     //console.log(event.target.className);
-    if (event.target.className == 'box'){
-        // highlight box
-        event.target.classList.add('click-on-box');
-        // de-highlight all other boxes
-        var all_click_on_box = document.getElementsByClassName('click-on-box');
-        for (var i = 0; i < all_click_on_box.length; ++i) {
-            if(all_click_on_box[i].id != event.target.id){
-                all_click_on_box[i].classList.remove('click-on-box');
+    if(clicked) {
+        if (event.target.className == 'box'){
+            // highlight box
+            event.target.classList.add('click-on-box');
+            // de-highlight all other boxes
+            var all_click_on_box = document.getElementsByClassName('click-on-box');
+            for (var i = 0; i < all_click_on_box.length; ++i) {
+                if(all_click_on_box[i].id != event.target.id){
+                    all_click_on_box[i].classList.remove('click-on-box');
+                }
+            }
+            // highlight marker on plot (decrease opacity of all the other markers)
+            highlight_x = Number(event.target.id.split(' ')[2]);
+            highlight_y = Number(event.target.id.split(' ')[3]);
+            // find index of resized element in array
+            var index = findIndexGivenCoords(highlight_x, highlight_y);
+            // reset opacity of all other elements
+            for (var i = 0; i < opacity.length; ++i) {
+                if(i != index){
+                    opacity[i] = 0.3;
+                }
+            }
+            var update = {'marker':{color:colors, size:sizes, opacity:opacity}};
+            Plotly.restyle('scatterPlot', update, 0);
+            // reset opacity of lines too
+            var graphDiv = document.getElementById('scatterPlot');
+            for (let i = 1; i < graphDiv.data.length; i++) {
+                var update = graphDiv.data[i].line;
+                update.opacity = 0.2;
+                Plotly.restyle('scatterPlot', update, i);    
+            }    
+        }
+        else if (event.target.className == 'meander'){
+            // highlight meander
+            // highlight arrow on plot (decrease opacity of all the other markers)
+            // de-highlight all other boxes
+            var all_click_on_box = document.getElementsByClassName('click-on-box');
+            for (var i = 0; i < all_click_on_box.length; ++i) {
+                if(all_click_on_box[i].id != event.target.id){
+                    all_click_on_box[i].classList.remove('click-on-box');
+                }
             }
         }
-        // highlight marker on plot (decrease opacity of all the other markers)
-    }
-    else if (event.target.className == 'meander'){
-        // highlight meander
-        // highlight arrow on plot (decrease opacity of all the other markers)
-        // de-highlight all other boxes
-        var all_click_on_box = document.getElementsByClassName('click-on-box');
-        for (var i = 0; i < all_click_on_box.length; ++i) {
-            if(all_click_on_box[i].id != event.target.id){
-                all_click_on_box[i].classList.remove('click-on-box');
+        else if (event.target.className == 'crossfade'){
+            // highlight crossfade
+            // highlight arrow on plot (decrease opacity of all the other markers)
+            // de-highlight all other boxes
+            var all_click_on_box = document.getElementsByClassName('click-on-box');
+            for (var i = 0; i < all_click_on_box.length; ++i) {
+                if(all_click_on_box[i].id != event.target.id){
+                    all_click_on_box[i].classList.remove('click-on-box');
+                }
             }
         }
-    }
-    else if (event.target.className == 'crossfade'){
-        // highlight crossfade
-        // highlight arrow on plot (decrease opacity of all the other markers)
-        // de-highlight all other boxes
-        var all_click_on_box = document.getElementsByClassName('click-on-box');
-        for (var i = 0; i < all_click_on_box.length; ++i) {
-            if(all_click_on_box[i].id != event.target.id){
-                all_click_on_box[i].classList.remove('click-on-box');
+        else{
+            // de-highlight all other boxes
+            var all_click_on_box = document.getElementsByClassName('click-on-box');
+            for (var i = 0; i < all_click_on_box.length; ++i) {
+                if(all_click_on_box[i].id != event.target.id){
+                    all_click_on_box[i].classList.remove('click-on-box');
+                }
             }
-        }
-    }
-    else{
-        // de-highlight all other boxes
-        var all_click_on_box = document.getElementsByClassName('click-on-box');
-        for (var i = 0; i < all_click_on_box.length; ++i) {
-            if(all_click_on_box[i].id != event.target.id){
-                all_click_on_box[i].classList.remove('click-on-box');
+            for (var i = 0; i < opacity.length; ++i) {
+                    opacity[i] = 1;
             }
-        }
-    }
-})
+            var update = {'line':{color:colors, size:sizes, opacity:opacity}};
+            Plotly.restyle('scatterPlot', update, 0);    
+            // reset opacity of lines too
+            var graphDiv = document.getElementById('scatterPlot');
+            for (let i = 1; i < graphDiv.data.length; i++) {
+                var update = graphDiv.data[i].line;
+                update.opacity = 1;
+                Plotly.restyle('scatterPlot', update, i);    
+            }    
 
+        }
+    }
+    clicked = false;
+})
 
 // dragging and dropping boxes
 function dragStart(e) {
@@ -239,41 +393,6 @@ function exchangeElements(element1, element2){
     element1.parentNode.replaceChild(clonedElement2, element1);
 }
 
-// create scatterplot
-var myScatterPlot = document.getElementById('scatterPlot'), 
-    x = new Float32Array([1,2,3,4,5,6,0,4,-1,-2,-3,-5,-6]),
-    y = new Float32Array([1,6,3,6,1,3,8,2,-3,-7,-2,-8,-6]),
-    colors = ['#00000','#00000','#00000','#00000','#00000','#00000','#00000',
-            '#00000','#00000','#00000','#00000','#00000','#00000'],
-    sizes = [10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10],
-    opacity = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
-    data = [ { 
-        x:x, y:y, 
-        type:'scatter',
-        mode:'markers',
-        marker:{size:sizes, color:colors, opacity:opacity} 
-    } ],
-    line = {
-
-    },
-    layout = {
-        xaxis: {
-            range: [ -10, 10 ],
-            showgrid: true,
-            zeroline: false,
-            showline: false
-        },
-        yaxis: {
-            range: [ -10, 10 ],
-            showgrid: true,
-            zeroline: false,
-            showline: false
-        },
-        title:'Latent space',
-        showlegend: false
-    };
-
-Plotly.newPlot('scatterPlot', data, layout);
 
 function render(){
     //remove all traces besides trace 0
@@ -296,7 +415,8 @@ function render(){
                         line: {
                             color: 'rgb(219, 64, 82)',
                             width: 2,
-                            dash: 'dot' // solid, dash, dashdot, dot, dash
+                            dash: 'dot', // solid, dash, dashdot, dot, dash
+                            opacity: 1
                           }
                     });
                 }
@@ -313,6 +433,7 @@ function render(){
                         line: {
                             color: 'rgb(219, 64, 82)',
                             width: 2,
+                            opacity: 1,
                             dash: 'dash' // solid, dash, dashdot, dot, dash
                           }
                     });
@@ -330,6 +451,7 @@ function render(){
                         line: {
                             color: 'rgb(219, 64, 82)',
                             width: 2,
+                            opacity: 1,
                             dash: 'solid' // solid, dash, dashdot, dot, dash
                           }
                     });
@@ -339,40 +461,6 @@ function render(){
     } 
 }
 
-
-// handle clicks on scatterplot
-myScatterPlot.on('plotly_click', function(data){
-    
-    if (data.points[0].curveNumber == 0){
-    // select a random color
-    var randomcolor = '#'+(0x1000000+Math.random()*0xffffff).toString(16).substr(1,6);
-    // change color and size of selected point
-    var pn='',
-        tn='',
-        colors=[];
-    
-    // only take into account trace 0
-    pn = data.points[0].pointNumber;
-    tn = data.points[0].curveNumber;
-    colors = data.points[0].data.marker.color;
-    sizes = data.points[0].data.marker.size;
-    colors[pn] = randomcolor;
-    sizes[pn] = 15;
-    var update = {'marker':{color: colors, size:sizes}};
-    Plotly.restyle('scatterPlot', update, [tn]);
-
-    var pts = '';
-    pts = 'x = '+data.points[0].x +'\ny = '+data.points[0].y.toPrecision(4) + '\n\n';
-    var x = data.points[0].x;
-    var y = data.points[0].y;
-
-    // create box with random color
-    addBox(randomcolor, x, y); 
-    console.log(pts);
-    // send OSC message
-
-    }
-});
 
 // add new crossfade
 function addCrossfade(){

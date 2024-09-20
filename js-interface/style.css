@@ -45,3 +45,10 @@ hr {
     border: solid 3px black;
 }
 
+#resize-box {
+    background-color: red;
+    width: 60%;
+    height: '10vh';
+    resize: vertical;
+    overflow-x: auto;
+}

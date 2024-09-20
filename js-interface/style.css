@@ -36,6 +36,12 @@ hr {
 .hide {
     display: none;
 }
+
 .drag-over {
     border: dashed 3px red;
 }
+
+.click-on-box {
+    border: solid 3px black;
+}
+

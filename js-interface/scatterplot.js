@@ -1,11 +1,25 @@
-// Requiring fs module in which 
-// readFile function is defined.
+/* 
+logic: 
+- you can't click on point if it's the last one being clicked
+
+todo:
+- click on box(highlight point if click on box and highlight box if click on point)
+- click on arrows
+- OSC integration
+- play and stop buttons
+- longer box --> larger marker
+- load latent space from file
+- latent space array as global var
+*/
+
+// Read lantent space coordinates
 /*const fs = require('fs');
 
 fs.readFile('scatterplot.txt', (err, data) => {
   if (err) throw err;
   console.log(data.toString());
 });*/
+
 
 class Box{
     constructor(x, y, duration){
@@ -52,6 +66,59 @@ function addBox(randomcolor, x, y) {
     render();
     console.log(compositionArray);
 }
+
+function clickOnBox(e) {
+    e.target.classList.add('click-on-box');
+}
+
+// highlight click on box
+document.addEventListener('click', event => {
+    //console.log(event.target.className);
+    if (event.target.className == 'box'){
+        // highlight box
+        event.target.classList.add('click-on-box');
+        // de-highlight all other boxes
+        var all_click_on_box = document.getElementsByClassName('click-on-box');
+        for (var i = 0; i < all_click_on_box.length; ++i) {
+            if(all_click_on_box[i].id != event.target.id){
+                all_click_on_box[i].classList.remove('click-on-box');
+            }
+        }
+        // highlight marker on plot (decrease opacity of all the other markers)
+    }
+    else if (event.target.className == 'meander'){
+        // highlight meander
+        // highlight arrow on plot (decrease opacity of all the other markers)
+        // de-highlight all other boxes
+        var all_click_on_box = document.getElementsByClassName('click-on-box');
+        for (var i = 0; i < all_click_on_box.length; ++i) {
+            if(all_click_on_box[i].id != event.target.id){
+                all_click_on_box[i].classList.remove('click-on-box');
+            }
+        }
+    }
+    else if (event.target.className == 'crossfade'){
+        // highlight crossfade
+        // highlight arrow on plot (decrease opacity of all the other markers)
+        // de-highlight all other boxes
+        var all_click_on_box = document.getElementsByClassName('click-on-box');
+        for (var i = 0; i < all_click_on_box.length; ++i) {
+            if(all_click_on_box[i].id != event.target.id){
+                all_click_on_box[i].classList.remove('click-on-box');
+            }
+        }
+    }
+    else{
+        // de-highlight all other boxes
+        var all_click_on_box = document.getElementsByClassName('click-on-box');
+        for (var i = 0; i < all_click_on_box.length; ++i) {
+            if(all_click_on_box[i].id != event.target.id){
+                all_click_on_box[i].classList.remove('click-on-box');
+            }
+        }
+    }
+})
+
 
 // dragging and dropping boxes
 function dragStart(e) {
@@ -179,11 +246,12 @@ var myScatterPlot = document.getElementById('scatterPlot'),
     colors = ['#00000','#00000','#00000','#00000','#00000','#00000','#00000',
             '#00000','#00000','#00000','#00000','#00000','#00000'],
     sizes = [10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10],
+    opacity = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
     data = [ { 
         x:x, y:y, 
         type:'scatter',
         mode:'markers',
-        marker:{size:sizes, color:colors} 
+        marker:{size:sizes, color:colors, opacity:opacity} 
     } ],
     line = {
 
@@ -270,19 +338,6 @@ function render(){
         }
     } 
 }
-
-Plotly.addTraces('scatterPlot', {
-    x: [6,0],
-    y: [3,8],
-    hoverinfo:'skip',
-    mode: 'lines',
-    line: {
-        color: 'rgb(219, 64, 82)',
-        width: 2,
-        dash: 'solid' // solid, dash, dashdot, dot, dash
-      }
-});
-Plotly.deleteTraces('scatterPlot', 1);
 
 
 // handle clicks on scatterplot
@@ -413,24 +468,6 @@ const insert_crossfade = document.getElementById("insert-crossfade");
 insert_crossfade.addEventListener("click", addCrossfade); 
 const insert_meander = document.getElementById("insert-meander"); 
 insert_meander.addEventListener("click", addMeander); 
-
-
-
-// handle click on box
-// data structure with boxes and points and order
-// add arrow
-// play the whole sequence
-
-
-// things to do: 
-// make navbar on top
-// update data structure on event
-// on click of point in graph: create a box, color the clicked point, listen to how that sounds like
-// on click on box: highlight point, listen to how that point sounds like
-// on click+drag on box: exchange box position in the timeline with box over which it is dragged
-// on 
-// how to add arrows?
-
 
 
 // OSC communication

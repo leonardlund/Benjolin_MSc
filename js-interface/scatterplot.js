@@ -7,30 +7,31 @@ fs.readFile('scatterplot.txt', (err, data) => {
   console.log(data.toString());
 });*/
 
+class Box{
+    constructor(x, y, duration){
+        this.x = x;
+        this.y = y;
+        this.duration = duration;
+    }
+}
 
-// dictionary containing instruction for playback
-const compositionDict = {
-    Box: {
-        coordinates: [0.2, 0.1],
-        duration: 10
-    },
-    Box: {
-        coordinates: [0.4, -0.2],
-        duration: 5
-    },
-    Meander: {
-        pointsList_x: [0.4, -0.2, 0.1, 0.5],
-        pointsList_y: [0.2, 0.1, 1, 0.3],
-        duration: 10
-    },
-    Box: {},
-    Crossfade:{}
-};
+class Meander{
+    constructor(duration){
+        this.duration = duration;
+    }
+}
 
+class Crossfade{
+    constructor(duration){
+        this.duration = duration;
+    }
+}
+
+const compositionArray = [];
 
 // add a box when a point on the scatterplot is clicked
 var numBoxes = 0
-function addBox(randomcolor, x, y) { 
+function addBox(randomcolor, x, y) {
     newBox = document.createElement("div");
     newBox.className = 'box';
     newBox.id = 'box '+numBoxes+' '+x+' '+y;
@@ -46,7 +47,11 @@ function addBox(randomcolor, x, y) {
     document.getElementById("compose-bar").appendChild(newBox); 
     console.log(newBox.id);
     numBoxes += 1;
-} 
+    var duration = 10;
+    compositionArray.push(new Box(x, y, duration));
+    render();
+    console.log(compositionArray);
+}
 
 // dragging and dropping boxes
 function dragStart(e) {
@@ -96,6 +101,8 @@ function drop(e) {
         const parent = e.target.parentElement;
         // swap boxes
         exchangeElements(draggable_node, target_node);
+        [compositionArray[index_draggable], compositionArray[index_target]] = [compositionArray[index_target], compositionArray[index_draggable]];
+        console.log(compositionArray);
 
         // correct ids
         if (target_x != null && draggable_x != null){
@@ -128,6 +135,7 @@ function drop(e) {
     }
     // display the draggable element
     draggable.classList.remove('hide');
+    render();
 }
 
 function exchangeElements(element1, element2){
@@ -174,8 +182,12 @@ var myScatterPlot = document.getElementById('scatterPlot'),
     data = [ { 
         x:x, y:y, 
         type:'scatter',
-        mode:'markers', 
-        marker:{size:sizes, color:colors} } ],
+        mode:'markers',
+        marker:{size:sizes, color:colors} 
+    } ],
+    line = {
+
+    },
     layout = {
         xaxis: {
             range: [ -10, 10 ],
@@ -189,43 +201,122 @@ var myScatterPlot = document.getElementById('scatterPlot'),
             zeroline: false,
             showline: false
         },
-        title:'Latent space'
+        title:'Latent space',
+        showlegend: false
     };
 
 Plotly.newPlot('scatterPlot', data, layout);
 
+function render(){
+    //remove all traces besides trace 0
+    var graphDiv = document.getElementById('scatterPlot');
+    for (let i = 1; i < graphDiv.data.length-1; i++) {
+        Plotly.deleteTraces(graphDiv, i);
+    }
+    //draw new traces
+    for (let i = 0; i < compositionArray.length; i++) {
+        if (i !=0){ // check if not on the first object
+            if (compositionArray[i] instanceof Meander){
+                // check if before and after there are boxes
+                if (compositionArray[i-1] instanceof Box && compositionArray[i+1] instanceof Box){ 
+                    // add dotted line if meander
+                    Plotly.addTraces('scatterPlot', {
+                        x: [compositionArray[i-1].x,compositionArray[i+1].x],
+                        y: [compositionArray[i-1].y,compositionArray[i+1].y],
+                        hoverinfo:'skip',
+                        mode: 'lines',
+                        line: {
+                            color: 'rgb(219, 64, 82)',
+                            width: 2,
+                            dash: 'dot' // solid, dash, dashdot, dot, dash
+                          }
+                    });
+                }
+            }
+            if (compositionArray[i] instanceof Crossfade){
+                // check if before and after there are boxes
+                if (compositionArray[i-1] instanceof Box && compositionArray[i+1] instanceof Box){ 
+                    // add dashed line if crossfade
+                    Plotly.addTraces('scatterPlot', {
+                        x: [compositionArray[i-1].x,compositionArray[i+1].x],
+                        y: [compositionArray[i-1].y,compositionArray[i+1].y],
+                        hoverinfo:'skip',
+                        mode: 'lines',
+                        line: {
+                            color: 'rgb(219, 64, 82)',
+                            width: 2,
+                            dash: 'dash' // solid, dash, dashdot, dot, dash
+                          }
+                    });
+                }
+            }
+            if (compositionArray[i] instanceof Box){
+                // check if before there is a box
+                if (compositionArray[i-1] instanceof Box){ 
+                    // add straight line if jump
+                    Plotly.addTraces('scatterPlot', {
+                        x: [compositionArray[i-1].x,compositionArray[i].x],
+                        y: [compositionArray[i-1].y,compositionArray[i].y],
+                        hoverinfo:'skip',
+                        mode: 'lines',
+                        line: {
+                            color: 'rgb(219, 64, 82)',
+                            width: 2,
+                            dash: 'solid' // solid, dash, dashdot, dot, dash
+                          }
+                    });
+                }
+            }
+        }
+    } 
+}
+
+Plotly.addTraces('scatterPlot', {
+    x: [6,0],
+    y: [3,8],
+    hoverinfo:'skip',
+    mode: 'lines',
+    line: {
+        color: 'rgb(219, 64, 82)',
+        width: 2,
+        dash: 'solid' // solid, dash, dashdot, dot, dash
+      }
+});
+Plotly.deleteTraces('scatterPlot', 1);
+
+
 // handle clicks on scatterplot
 myScatterPlot.on('plotly_click', function(data){
     
+    if (data.points[0].curveNumber == 0){
     // select a random color
     var randomcolor = '#'+(0x1000000+Math.random()*0xffffff).toString(16).substr(1,6);
     // change color and size of selected point
     var pn='',
         tn='',
         colors=[];
-    for(var i=0; i < data.points.length; i++){ //iterate over traces
-      pn = data.points[i].pointNumber;
-      tn = data.points[i].curveNumber;
-      colors = data.points[i].data.marker.color;
-      sizes = data.points[i].data.marker.size;
-    };
+    
+    // only take into account trace 0
+    pn = data.points[0].pointNumber;
+    tn = data.points[0].curveNumber;
+    colors = data.points[0].data.marker.color;
+    sizes = data.points[0].data.marker.size;
     colors[pn] = randomcolor;
     sizes[pn] = 15;
     var update = {'marker':{color: colors, size:sizes}};
     Plotly.restyle('scatterPlot', update, [tn]);
 
-    // print to console
     var pts = '';
-    for(var i=0; i < data.points.length; i++){ //iterate over traces
-        pts = 'x = '+data.points[i].x +'\ny = '+
-            data.points[i].y.toPrecision(4) + '\n\n';
-        var x = data.points[i].x;
-        var y = data.points[i].y;
-    }
+    pts = 'x = '+data.points[0].x +'\ny = '+data.points[0].y.toPrecision(4) + '\n\n';
+    var x = data.points[0].x;
+    var y = data.points[0].y;
+
     // create box with random color
     addBox(randomcolor, x, y); 
     console.log(pts);
     // send OSC message
+
+    }
 });
 
 // add new crossfade
@@ -263,6 +354,10 @@ function addCrossfade(){
     console.log(newCrossfade.id);
     numBoxes += 1;
 
+    var duration = 10;
+    compositionArray.push(new Crossfade(duration));
+    render();
+    console.log(compositionArray);
 }
 
 // stop images to be draggable
@@ -305,6 +400,11 @@ function addMeander(){
 
     console.log(newMeander.id);
     numBoxes += 1;
+
+    var duration = 10;
+    compositionArray.push(new Meander(duration));
+    render();
+    console.log(compositionArray);
 
 }
 

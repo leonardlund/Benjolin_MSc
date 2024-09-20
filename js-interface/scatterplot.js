@@ -1,19 +1,19 @@
 /* 
 todo:
 - click on arrows
-- update duration when larger box
+- resize arrows
 - highlighting arrows
 - time limit or infinite composition bar?
-- garbage bin to remove elements dynamically
+- garbage bin to remove elements dynamically when dragged over
 - OSC integration
 - play and stop buttons
 - load latent space from file
-- latent space array as global var
 - completely responsive webpage
 - touchscreen?
 
 logic: 
 - you can't click on point if it's the last one being clicked
+- you can't create any more elements if limit has been reached
 */
 
 // Read lantent space coordinates

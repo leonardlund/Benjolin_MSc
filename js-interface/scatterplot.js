@@ -46,15 +46,20 @@ class Crossfade{
 }
 
 const compositionArray = [];
+const base_size = 10;
+const base_color = '#00000';
+const base_opacity = 1;
 
 // create scatterplot
 var myScatterPlot = document.getElementById('scatterPlot'), 
     x = new Float32Array([1,2,3,4,5,6,0,4,-1,-2,-3,-5,-6]),
     y = new Float32Array([1,6,3,6,1,3,8,2,-3,-7,-2,-8,-6]),
-    colors = ['#00000','#00000','#00000','#00000','#00000','#00000','#00000',
-            '#00000','#00000','#00000','#00000','#00000','#00000'],
-    sizes = [10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10],
-    opacity = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+    colors = [base_color,base_color,base_color,base_color,base_color,base_color,base_color,
+            base_color,base_color,base_color,base_color,base_color,base_color],
+    sizes = [base_size, base_size, base_size, base_size, base_size, base_size, 
+            base_size, base_size, base_size, base_size, base_size, base_size, base_size],
+    opacity = [base_opacity,base_opacity,base_opacity,base_opacity,base_opacity,base_opacity,
+                base_opacity,base_opacity,base_opacity,base_opacity,base_opacity,base_opacity,base_opacity]
     data = [ { 
         x:x, y:y, 
         type:'scatter',
@@ -121,10 +126,11 @@ myScatterPlot.on('plotly_click', function(data){
 // check for resize event
 const observer = new ResizeObserver(function(mutations) {
     //console.clear()
+
     var resizedID = mutations[0].target.attributes.id.nodeValue;
     var resized_newHeight = mutations[0].contentRect.height; // height in px
     // scale px to width of marker: 100px = 20px marker
-    console.log(resizedID);
+    console.log('resizing '+resizedID);
 
     // update box duration in composition array
     var boxNumber = Number(resizedID.split(' ')[1]);
@@ -135,15 +141,14 @@ const observer = new ResizeObserver(function(mutations) {
     if (resizedID.split(' ').length > 2){
         resize_x = Number(resizedID.split(' ')[2]);
         resize_y = Number(resizedID.split(' ')[3]);
+        // find index of resized element in array
+        var index = findIndexGivenCoords(resize_x, resize_y);
+        //resize marker
+        var heightToPointSize = 0.25;
+        sizes[index] = resized_newHeight * heightToPointSize;
+        var update = {'marker':{color:colors, size:sizes, opacity:opacity}};
+        Plotly.restyle('scatterPlot', update, 0);
     }
-    // find index of resized element in array
-    var index = findIndexGivenCoords(resize_x, resize_y);
-    //resize marker
-    var heightToPointSize = 0.25;
-    sizes[index] = resized_newHeight * heightToPointSize;
-    var update = {'marker':{color:colors, size:sizes, opacity:opacity}};
-    Plotly.restyle('scatterPlot', update, 0);
-    
     //console.log(mutations[0].target.attributes.id);
     //console.log(mutations[0].contentRect.width, mutations[0].contentRect.height);
 });
@@ -189,12 +194,13 @@ function clickOnBox(e) {
 }
 
 // highlight click on box
-let clicked = false;
-document.addEventListener('mousedown', e => { clicked = true; });
-document.addEventListener('mousemove', e => { clicked = false; });
-document.addEventListener('mouseup', event => {
+//let clicked = false;
+//document.addEventListener('mousedown', e => { clicked = true; });
+//document.addEventListener('mousemove', e => { clicked = false; });
+//document.addEventListener('mouseup', event => {
+document.addEventListener('click', event => {
     //console.log(event.target.className);
-    if(clicked) {
+    //if(clicked) {
         if (event.target.className == 'box'){
             // highlight box
             event.target.classList.add('click-on-box');
@@ -228,6 +234,7 @@ document.addEventListener('mouseup', event => {
         }
         else if (event.target.className == 'meander'){
             // highlight meander
+            event.target.classList.add('click-on-box');
             // highlight arrow on plot (decrease opacity of all the other markers)
             // de-highlight all other boxes
             var all_click_on_box = document.getElementsByClassName('click-on-box');
@@ -239,6 +246,7 @@ document.addEventListener('mouseup', event => {
         }
         else if (event.target.className == 'crossfade'){
             // highlight crossfade
+            event.target.classList.add('click-on-box');
             // highlight arrow on plot (decrease opacity of all the other markers)
             // de-highlight all other boxes
             var all_click_on_box = document.getElementsByClassName('click-on-box');
@@ -270,8 +278,8 @@ document.addEventListener('mouseup', event => {
             }    
 
         }
-    }
-    clicked = false;
+    //}
+    //clicked = false;
 })
 
 // dragging and dropping boxes
@@ -359,6 +367,45 @@ function drop(e) {
     render();
 }
 
+// implement trash bin
+function dropOnTrashBin(e) {
+    // update class list
+    e.target.classList.remove('drag-over');
+    // find and remove draggable element
+    const id_draggable = e.dataTransfer.getData('text/plain');
+    const draggable = document.getElementById(id_draggable);
+    draggable.remove();
+    // reset color and size of scatterplot element
+    draggable_x = Number(id_draggable.split(' ')[2]);
+    draggable_y = Number(id_draggable.split(' ')[3]);
+    var scatterplot_index = findIndexGivenCoords(x, y);
+    sizes[scatterplot_index] = base_size;
+    colors[scatterplot_index] = base_color;
+    var update = {'marker':{color: colors, size:sizes, opacity:opacity}};
+    Plotly.restyle('scatterPlot', update, 0);
+    // remove item from composition array
+    const comp_index = Number(id_draggable.split(' ')[1]);
+    compositionArray.splice(comp_index, 1);
+    // reduce number of boxes
+    numBoxes += 1;
+    // TODO: adjust IDs of boxes before and after!!
+    console.log('removing element '+ comp_index);
+    console.log(compositionArray);    
+    render(); // render scatterplot
+}
+
+// trash bin functionalities
+var trashBin = document.getElementById('bin');
+trashBin.addEventListener('dragover', dragOver);
+trashBin.addEventListener('dragenter', dragEnter)
+trashBin.addEventListener('dragleave', dragLeave);
+trashBin.addEventListener('drop', dropOnTrashBin);
+trashBin.parentNode.addEventListener('dragover', dragImgInsideBox);
+trashBin.parentNode.addEventListener('dragenter', dragImgInsideBox);
+trashBin.parentNode.addEventListener('dragleave', dragImgInsideBox);
+trashBin.parentNode.addEventListener('drop', dragImgInsideBox);
+
+// exchange boxes
 function exchangeElements(element1, element2){
 
     var clonedElement1 = element1.cloneNode(true);
@@ -391,13 +438,14 @@ function exchangeElements(element1, element2){
 
     element2.parentNode.replaceChild(clonedElement1, element2);
     element1.parentNode.replaceChild(clonedElement2, element1);
+    observer.observe(clonedElement1);
+    observer.observe(clonedElement2);
 }
-
 
 function render(){
     //remove all traces besides trace 0
     var graphDiv = document.getElementById('scatterPlot');
-    for (let i = 1; i < graphDiv.data.length-1; i++) {
+    for (let i = 1; i < graphDiv.data.length; i++) {
         Plotly.deleteTraces(graphDiv, i);
     }
     //draw new traces
@@ -461,6 +509,11 @@ function render(){
     } 
 }
 
+// stop images inside boxes to be draggable
+function dragImgInsideBox(e) {
+    e.preventDefault();
+    e.stopPropagation(); 
+}
 
 // add new crossfade
 function addCrossfade(){
@@ -477,6 +530,8 @@ function addCrossfade(){
     newCrossfade.style["background-color"] = 'DodgerBlue';
     newCrossfade.style["height"] = '10vh';
     newCrossfade.style["width"] = '60%';
+    newCrossfade.style["resize"] = 'vertical';
+    newCrossfade.style["overflow-x"] = 'auto';
     newCrossfade.draggable = 'true';
     
     newCrossfade.appendChild(newImg)
@@ -501,12 +556,7 @@ function addCrossfade(){
     compositionArray.push(new Crossfade(duration));
     render();
     console.log(compositionArray);
-}
-
-// stop images to be draggable
-function dragImgInsideBox(e) {
-    e.preventDefault();
-    e.stopPropagation(); 
+    observer.observe(newCrossfade);
 }
 
 // add new meander
@@ -524,6 +574,8 @@ function addMeander(){
     newMeander.style["background-color"] = 'DodgerBlue';
     newMeander.style["height"] = '10vh';
     newMeander.style["width"] = '60%';
+    newMeander.style["resize"] = 'vertical';
+    newMeander.style["overflow-x"] = 'auto';
     newMeander.draggable = 'true';
     
     newMeander.appendChild(newImg)
@@ -548,6 +600,7 @@ function addMeander(){
     compositionArray.push(new Meander(duration));
     render();
     console.log(compositionArray);
+    observer.observe(newMeander);
 
 }
 

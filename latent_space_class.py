@@ -4,7 +4,7 @@ from pythonosc import udp_client
 from pythonosc.dispatcher import Dispatcher
 from pythonosc.osc_server import BlockingOSCUDPServer
 import time
-
+import threading
 
 class LatentSpace():
     def __init__(self, dataset, clientPd, clientJS, dimensionality, k=50):
@@ -32,10 +32,10 @@ class LatentSpace():
         return self.current_index
     
     def set_current_point(self, index):
-        self.play_benjo()
         self.current_index = index
         self.current_latent_coordinate = self.latent[self.current_index, :]
         self.current_parameters = self.parameter[self.current_index, :]
+        self.play_benjo()
 
     def get_point_info(self, index):
         return self.latent[index, :], self.parameter[index, :]
@@ -142,8 +142,10 @@ class LatentSpace():
         x, y = message
         index = self.get_index_given_latent([x, y])
         self.set_current_point(index=index)
+        self.is_playing_crossfade = False
+        self.is_playing_meander = False
 
-    def play_meander_handler(self, message):
+    def __play_meander_handler(self, message):
         x1, y1, x2, y2, t = message
         path_of_indices = self.get_meander(x1, y1, x2, y2)
         length = path_of_indices.shape[0]
@@ -155,7 +157,7 @@ class LatentSpace():
             clientPd.send_message("/params", params_message)
             time.sleep(time_per_point)
 
-    def play_crossfade_handler(self, message):
+    def __play_crossfade_handler(self, message):
         x1, y1, x2, y2, t = message
         idx1 = self.get_index_given_latent([x1, y1])
         idx2 = self.get_index_given_latent([x2, y2])
@@ -172,6 +174,56 @@ class LatentSpace():
             clientPd.send_message("/params", params_message)
             time.sleep(time_per_point)
 
+    def play_meander_handler(self, message):
+        x1, y1, x2, y2, t = message
+        path_of_indices = self.get_meander(x1, y1, x2, y2)
+        length = path_of_indices.shape[0]
+        time_per_point = t / length
+
+        # Create a new thread to play the meander in the background
+        thread = threading.Thread(target=self._play_meander_in_background, args=(length, path_of_indices, time_per_point))
+        thread.start()
+        # Set a flag to indicate that the function is running
+        self.is_playing_meander = True
+        self.is_playing_crossfade = False
+
+    def _play_meander_in_background(self, length, path_of_indices, time_per_point):
+        for i in range(length):
+            if not self.is_playing_meander:
+                return
+            self.set_current_point(path_of_indices[i])
+            # params = cloud.parameter[path_of_indices[i], :]
+            # params_message = '-'.join([str(int(param)) for param in params])
+            # clientPd.send_message("/params", params_message)
+            time.sleep(time_per_point)
+
+    def play_crossfade_handler(self, message):
+        x1, y1, x2, y2, t = message
+        idx1 = self.get_index_given_latent([x1, y1])
+        idx2 = self.get_index_given_latent([x2, y2])
+        _, params1 = self.get_point_info(index=idx1)
+        _, params2 = self.get_point_info(index=idx2)
+        time_per_point = 0.1
+        steps = 10 * t
+
+        # Create a new thread to play the crossfade in the background
+        thread = threading.Thread(target=self._play_crossfade_in_background, args=(params1, params2, steps, time_per_point))
+        thread.start()
+        # Set a flag to indicate that the function is running
+        self.is_playing_crossfade = True
+        self.is_playing_meander = False
+
+    def _play_crossfade_in_background(self, params1, params2, steps, time_per_point):
+        for i in range(steps):
+            if not self.is_playing_crossfade:
+                return
+            b = i / steps
+            a = 1 - b
+            params = params1 * a + params2 * b
+            params_message = '-'.join([str(int(param)) for param in params])
+            clientPd.send_message("/params", params_message)
+            time.sleep(time_per_point)
+
     def drawMeander_handler(self, message):
         x1, y1, x2, y2 = message
         path_of_indices = self.get_meander(x1, y1, x2, y2)
@@ -180,6 +232,8 @@ class LatentSpace():
 
     def stop_handler(self, message):
         self.stop_benjo()
+        self.is_playing_crossfade = False
+        self.is_playing_meander = False
 
 
 def default_handler(message):

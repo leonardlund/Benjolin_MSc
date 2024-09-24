@@ -1,0 +1,9 @@
+{
+    "name": "osc.js-webudp-app",
+    "version": "1.0.0",
+    "ignore": [],
+    "dependencies": {
+        "jquery": "3.6.4",
+        "osc": "^2.4.5"
+    }
+}

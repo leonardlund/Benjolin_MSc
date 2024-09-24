@@ -64,7 +64,7 @@ class LatentSpace():
         new_points = np.column_stack((new_x, new_y)) / n
         return new_points
     
-    def find_next_point(self, idz, b, path):
+    def find_next_point(self, a, b, path):
         """
         Finds a point adjacent to a that is in the direction of b, with the least distance in parameter space
 
@@ -131,10 +131,10 @@ class LatentSpace():
         idx1 = self.get_index_given_latent([x1, y1])
         idx2 = self.get_index_given_latent([x2, y2])
         key = str(idx1) + "-" + str(idx2)
-        if self.path_cache[key]:
+        if key in self.path_cache:
             return self.path_cache[key]
         else:
-            path_of_indices = self.get_meander(idx1, idx2)
+            path_of_indices = self.calculate_meander(idx1, idx2)
             self.path_cache[key] = path_of_indices
             return path_of_indices
         

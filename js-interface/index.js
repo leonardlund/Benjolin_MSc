@@ -1,6 +1,8 @@
 //--------------------------------------------------
 //  Bi-Directional OSC messaging Websocket <-> UDP
 //--------------------------------------------------
+// FROM: https://github.com/colinbdclark/osc.js-examples/tree/main/udp-browser
+
 var osc = require("osc"),
     WebSocket = require("ws");
 

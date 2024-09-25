@@ -1,11 +1,8 @@
 /* 
 todo:
 - render arrows instead of lines
-- click on arrows
-- resize arrows
 - highlighting arrows
 - time limit or infinite composition bar?
-- garbage bin to remove elements dynamically when dragged over
 - OSC integration
 - play and stop buttons
 - load latent space from file
@@ -15,6 +12,12 @@ todo:
 logic: 
 - you can't click on point if it's the last one being clicked
 - you can't create any more elements if limit has been reached
+
+bugs: 
+- what's the problem with meander code?
+- what does the stop button do?
+- why do I need to send two messages for them to work? -- probably a python thing
+- render function has problems
 */
 
 class Box{
@@ -82,11 +85,12 @@ var myScatterPlot = document.getElementById('scatterPlot'),
         },
         //hovermode: false,
         //dragmode: "pan",
-        title:'Latent space',
+        //title:'Latent space',
         showlegend: false
     };
 
 Plotly.newPlot('scatterPlot', data, layout);
+
 
 // handle clicks on scatterplot
 myScatterPlot.on('plotly_click', function(data){
@@ -135,8 +139,8 @@ const observer = new ResizeObserver(function(mutations) {
 
     // update box duration in composition array
     var boxNumber = Number(resizedID.split(' ')[1]);
-    var heightToSec = 1;
-    if(compositionArray[boxNumber]){
+    var heightToSec = 0.2;
+    if(compositionArray[boxNumber] && resized_newHeight != 0){
         compositionArray[boxNumber].duration = resized_newHeight * heightToSec;
     }
 
@@ -172,7 +176,7 @@ function addBox(randomcolor, x, y) {
     newBox.className = 'box';
     newBox.id = 'box '+numBoxes+' '+x+' '+y;
     newBox.style["background-color"] = randomcolor;
-    newBox.style["height"] = '10vh';
+    newBox.style["height"] = '5vh';
     newBox.style["width"] = '60%';
     newBox.style["resize"] = 'vertical';
     newBox.style["overflow-x"] = 'auto';
@@ -185,7 +189,7 @@ function addBox(randomcolor, x, y) {
     document.getElementById("compose-bar").appendChild(newBox); 
     console.log(newBox.id);
     numBoxes += 1;
-    var duration = 10;
+    var duration = 2;
     compositionArray.push(new Box(x, y, duration));
     render();
     //console.log(compositionArray);
@@ -205,6 +209,7 @@ document.addEventListener('click', event => {
     //console.log(event.target.className);
     //if(clicked) {
         if (event.target.className == 'box'){
+            console.log(event.target.classList.contains('box'));
             // highlight box
             event.target.classList.add('click-on-box');
             // de-highlight all other boxes
@@ -217,8 +222,11 @@ document.addEventListener('click', event => {
             // highlight marker on plot (decrease opacity of all the other markers)
             highlight_x = Number(event.target.id.split(' ')[2]);
             highlight_y = Number(event.target.id.split(' ')[3]);
+            // listen to box
+            sendBox(highlight_x, highlight_y);
             // find index of resized element in array
             var index = findIndexGivenCoords(highlight_x, highlight_y);
+            opacity[index] = 1;
             // reset opacity of all other elements
             for (var i = 0; i < opacity.length; i++) {
                 if(i != index){
@@ -233,11 +241,22 @@ document.addEventListener('click', event => {
                 var update = graphDiv.data[i].line;
                 update.opacity = 0.2;
                 Plotly.restyle('scatterPlot', update, i);    
-            }    
+            }
         }
-        else if (event.target.className == 'meander'){
+        else if (event.target.classList.contains('meander')){
+            console.log("here!")
             // highlight meander
             event.target.classList.add('click-on-box');
+            // send OSC and listen to meander 
+            var compositionIndex = Number(event.target.id.split(' ')[1]);
+            if (compositionIndex != 0 && compositionArray[compositionIndex] instanceof Meander){
+                // check if before and after there are boxes
+                if (compositionArray[compositionIndex-1] instanceof Box && compositionArray[compositionIndex+1] instanceof Box){
+                    sendMeander(compositionArray[compositionIndex-1].x, compositionArray[compositionIndex-1].y, 
+                        compositionArray[compositionIndex+1].x, compositionArray[compositionIndex+1].y, 
+                        compositionArray[compositionIndex].duration);
+        }
+            }
             // highlight arrow on plot (decrease opacity of all the other markers)
             // de-highlight all other boxes
             var all_click_on_box = document.getElementsByClassName('click-on-box');
@@ -247,9 +266,19 @@ document.addEventListener('click', event => {
                 }
             }
         }
-        else if (event.target.className == 'crossfade'){
+        else if (event.target.classList.contains('crossfade')){
             // highlight crossfade
             event.target.classList.add('click-on-box');
+            // send OSC and listen to crossfade 
+            var compositionIndex = Number(event.target.id.split(' ')[1]);
+            if (compositionIndex != 0 && compositionArray[compositionIndex] instanceof Crossfade){
+                // check if before and after there are boxes
+                if (compositionArray[compositionIndex-1] instanceof Box && compositionArray[compositionIndex+1] instanceof Box){
+                    sendCrossfade(compositionArray[compositionIndex-1].x, compositionArray[compositionIndex-1].y, 
+                                compositionArray[compositionIndex+1].x, compositionArray[compositionIndex+1].y, 
+                                compositionArray[compositionIndex].duration);
+                }
+            }
             // highlight arrow on plot (decrease opacity of all the other markers)
             // de-highlight all other boxes
             var all_click_on_box = document.getElementsByClassName('click-on-box');
@@ -540,7 +569,7 @@ function addCrossfade(){
     newCrossfade.className = 'crossfade text-center';
     newCrossfade.id = 'box ' + numBoxes;
     newCrossfade.style["background-color"] = 'DodgerBlue';
-    newCrossfade.style["height"] = '10vh';
+    newCrossfade.style["height"] = '5vh';
     newCrossfade.style["width"] = '60%';
     newCrossfade.style["resize"] = 'vertical';
     newCrossfade.style["overflow-x"] = 'auto';
@@ -564,7 +593,7 @@ function addCrossfade(){
     console.log(newCrossfade.id);
     numBoxes += 1;
 
-    var duration = 10;
+    var duration = 2;
     compositionArray.push(new Crossfade(duration));
     render();
     console.log(compositionArray);
@@ -584,7 +613,7 @@ function addMeander(){
     newMeander.className = 'meander text-center';
     newMeander.id = 'box ' + numBoxes;
     newMeander.style["background-color"] = 'DodgerBlue';
-    newMeander.style["height"] = '10vh';
+    newMeander.style["height"] = '5vh';
     newMeander.style["width"] = '60%';
     newMeander.style["resize"] = 'vertical';
     newMeander.style["overflow-x"] = 'auto';
@@ -608,7 +637,7 @@ function addMeander(){
     console.log(newMeander.id);
     numBoxes += 1;
 
-    var duration = 10;
+    var duration = 2;
     compositionArray.push(new Meander(duration));
     render();
     console.log(compositionArray);

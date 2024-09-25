@@ -1,17 +1,22 @@
 /* 
 todo:
+- implement exploration/composition MODES button
+    - exploration highlights points in the scatterplot without adding a box (when a new point is highlighted the old one is de-highlighted)
+    - composition mode allows to add boxes. When swithcing from composition to exploration the boxes already created are left where they are
+- play button colored while playing
+- establishing times
 - render arrows instead of lines
 - highlighting arrows
 - time limit or infinite composition bar?
 - OSC integration
 - play and stop buttons
-- load latent space from file
 - completely responsive webpage
 - touchscreen?
 
 logic: 
 - you can't click on point if it's the last one being clicked
 - you can't create any more elements if limit has been reached
+- if it's playing, clicking anywhere stops the playing OR disable all functions until playing stops
 
 bugs: 
 - what's the problem with meander code?
@@ -51,12 +56,9 @@ var myScatterPlot = document.getElementById('scatterPlot'),
     y = new Float32Array([1,6,3,6,1,3,8,2,-3,-7,-2,-8,-6]),
     //x = new Float32Array(dataset['x']); //.slice(0, 100);
     //y = new Float32Array(dataset['y']); //.slice(0, 100);
-    colors = [base_color,base_color,base_color,base_color,base_color,base_color,base_color,
-            base_color,base_color,base_color,base_color,base_color,base_color],
-    sizes = [base_size, base_size, base_size, base_size, base_size, base_size, 
-            base_size, base_size, base_size, base_size, base_size, base_size, base_size],
-    opacity = [base_opacity,base_opacity,base_opacity,base_opacity,base_opacity,base_opacity,
-                base_opacity,base_opacity,base_opacity,base_opacity,base_opacity,base_opacity,base_opacity]
+    colors = Array(x.length).fill(base_color);
+    sizes = Array(x.length).fill(base_size);
+    opacity = Array(x.length).fill(base_opacity);
     data = [ { 
         x:x, y:y, 
         type:'scatter',
@@ -206,113 +208,110 @@ function clickOnBox(e) {
 //document.addEventListener('mousemove', e => { clicked = false; });
 //document.addEventListener('mouseup', event => {
 document.addEventListener('click', event => {
-    //console.log(event.target.className);
-    //if(clicked) {
-        if (event.target.className == 'box'){
-            console.log(event.target.classList.contains('box'));
-            // highlight box
-            event.target.classList.add('click-on-box');
-            // de-highlight all other boxes
-            var all_click_on_box = document.getElementsByClassName('click-on-box');
-            for (var i = 0; i < all_click_on_box.length; i++) {
-                if(all_click_on_box[i].id != event.target.id){
-                    all_click_on_box[i].classList.remove('click-on-box');
-                }
-            }
-            // highlight marker on plot (decrease opacity of all the other markers)
-            highlight_x = Number(event.target.id.split(' ')[2]);
-            highlight_y = Number(event.target.id.split(' ')[3]);
-            // listen to box
-            sendBox(highlight_x, highlight_y);
-            // find index of resized element in array
-            var index = findIndexGivenCoords(highlight_x, highlight_y);
-            opacity[index] = 1;
-            // reset opacity of all other elements
-            for (var i = 0; i < opacity.length; i++) {
-                if(i != index){
-                    opacity[i] = 0.3;
-                }
-            }
-            var update = {'marker':{color:colors, size:sizes, opacity:opacity}};
-            Plotly.restyle('scatterPlot', update, 0);
-            // reset opacity of lines too
-            var graphDiv = document.getElementById('scatterPlot');
-            for (let i = 1; i < graphDiv.data.length; i++) {
-                var update = graphDiv.data[i].line;
-                update.opacity = 0.2;
-                Plotly.restyle('scatterPlot', update, i);    
-            }
-        }
-        else if (event.target.classList.contains('meander')){
-            console.log("here!")
-            // highlight meander
-            event.target.classList.add('click-on-box');
-            // send OSC and listen to meander 
-            var compositionIndex = Number(event.target.id.split(' ')[1]);
-            if (compositionIndex != 0 && compositionArray[compositionIndex] instanceof Meander){
-                // check if before and after there are boxes
-                if (compositionArray[compositionIndex-1] instanceof Box && compositionArray[compositionIndex+1] instanceof Box){
-                    sendMeander(compositionArray[compositionIndex-1].x, compositionArray[compositionIndex-1].y, 
-                        compositionArray[compositionIndex+1].x, compositionArray[compositionIndex+1].y, 
-                        compositionArray[compositionIndex].duration);
-        }
-            }
-            // highlight arrow on plot (decrease opacity of all the other markers)
-            // de-highlight all other boxes
-            var all_click_on_box = document.getElementsByClassName('click-on-box');
-            for (var i = 0; i < all_click_on_box.length; i++) {
-                if(all_click_on_box[i].id != event.target.id){
-                    all_click_on_box[i].classList.remove('click-on-box');
-                }
-            }
-        }
-        else if (event.target.classList.contains('crossfade')){
-            // highlight crossfade
-            event.target.classList.add('click-on-box');
-            // send OSC and listen to crossfade 
-            var compositionIndex = Number(event.target.id.split(' ')[1]);
-            if (compositionIndex != 0 && compositionArray[compositionIndex] instanceof Crossfade){
-                // check if before and after there are boxes
-                if (compositionArray[compositionIndex-1] instanceof Box && compositionArray[compositionIndex+1] instanceof Box){
-                    sendCrossfade(compositionArray[compositionIndex-1].x, compositionArray[compositionIndex-1].y, 
-                                compositionArray[compositionIndex+1].x, compositionArray[compositionIndex+1].y, 
-                                compositionArray[compositionIndex].duration);
-                }
-            }
-            // highlight arrow on plot (decrease opacity of all the other markers)
-            // de-highlight all other boxes
-            var all_click_on_box = document.getElementsByClassName('click-on-box');
-            for (var i = 0; i < all_click_on_box.length; i++) {
-                if(all_click_on_box[i].id != event.target.id){
-                    all_click_on_box[i].classList.remove('click-on-box');
-                }
-            }
-        }
-        else{
-            // de-highlight all other boxes
-            var all_click_on_box = document.getElementsByClassName('click-on-box');
-            for (var i = 0; i < all_click_on_box.length; i++) {
-                if(all_click_on_box[i].id != event.target.id){
-                    all_click_on_box[i].classList.remove('click-on-box');
-                }
-            }
-            for (var i = 0; i < opacity.length; i++) {
-                    opacity[i] = 1;
-            }
-            var update = {'line':{color:colors, size:sizes, opacity:opacity}};
-            Plotly.restyle('scatterPlot', update, 0);    
-            // reset opacity of lines too
-            var graphDiv = document.getElementById('scatterPlot');
-            for (let i = 1; i < graphDiv.data.length; i++) {
-                var update = graphDiv.data[i].line;
-                update.opacity = 1;
-                Plotly.restyle('scatterPlot', update, i);    
-            }    
-
-        }
-    //}
-    //clicked = false;
+    highlightBoxElement(event.target);
 })
+
+function highlightBoxElement(element){
+    if (element.className == 'box'){
+        // highlight box
+        element.classList.add('click-on-box');
+        // de-highlight all other boxes
+        var all_click_on_box = document.getElementsByClassName('click-on-box');
+        for (var i = 0; i < all_click_on_box.length; i++) {
+            if(all_click_on_box[i].id != element.id){
+                all_click_on_box[i].classList.remove('click-on-box');
+            }
+        }
+        // highlight marker on plot (decrease opacity of all the other markers)
+        highlight_x = Number(element.id.split(' ')[2]);
+        highlight_y = Number(element.id.split(' ')[3]);
+        // listen to box
+        sendBox(highlight_x, highlight_y);
+        // find index of resized element in array
+        var index = findIndexGivenCoords(highlight_x, highlight_y);
+        opacity[index] = 1;
+        // reset opacity of all other elements
+        for (var i = 0; i < opacity.length; i++) {
+            if(i != index){
+                opacity[i] = 0.3;
+            }
+        }
+        var update = {'marker':{color:colors, size:sizes, opacity:opacity}};
+        Plotly.restyle('scatterPlot', update, 0);
+        // reset opacity of lines too
+        var graphDiv = document.getElementById('scatterPlot');
+        for (let i = 1; i < graphDiv.data.length; i++) {
+            var update = graphDiv.data[i].line;
+            update.opacity = 0.2;
+            Plotly.restyle('scatterPlot', update, i);    
+        }
+    }
+    else if (element.classList.contains('meander')){
+        // highlight meander
+        element.classList.add('click-on-box');
+        // send OSC and listen to meander 
+        var compositionIndex = Number(element.id.split(' ')[1]);
+        if (compositionIndex != 0 && compositionArray[compositionIndex] instanceof Meander){
+            // check if before and after there are boxes
+            if (compositionArray[compositionIndex-1] instanceof Box && compositionArray[compositionIndex+1] instanceof Box){
+                sendMeander(compositionArray[compositionIndex-1].x, compositionArray[compositionIndex-1].y, 
+                    compositionArray[compositionIndex+1].x, compositionArray[compositionIndex+1].y, 
+                    compositionArray[compositionIndex].duration);
+    }
+        }
+        // highlight arrow on plot (decrease opacity of all the other markers)
+        // de-highlight all other boxes
+        var all_click_on_box = document.getElementsByClassName('click-on-box');
+        for (var i = 0; i < all_click_on_box.length; i++) {
+            if(all_click_on_box[i].id != element.id){
+                all_click_on_box[i].classList.remove('click-on-box');
+            }
+        }
+    }
+    else if (element.classList.contains('crossfade')){
+        // highlight crossfade
+        element.classList.add('click-on-box');
+        // send OSC and listen to crossfade 
+        var compositionIndex = Number(element.id.split(' ')[1]);
+        if (compositionIndex != 0 && compositionArray[compositionIndex] instanceof Crossfade){
+            // check if before and after there are boxes
+            if (compositionArray[compositionIndex-1] instanceof Box && compositionArray[compositionIndex+1] instanceof Box){
+                sendCrossfade(compositionArray[compositionIndex-1].x, compositionArray[compositionIndex-1].y, 
+                            compositionArray[compositionIndex+1].x, compositionArray[compositionIndex+1].y, 
+                            compositionArray[compositionIndex].duration);
+            }
+        }
+        // highlight arrow on plot (decrease opacity of all the other markers)
+        // de-highlight all other boxes
+        var all_click_on_box = document.getElementsByClassName('click-on-box');
+        for (var i = 0; i < all_click_on_box.length; i++) {
+            if(all_click_on_box[i].id != element.id){
+                all_click_on_box[i].classList.remove('click-on-box');
+            }
+        }
+    }
+    else{
+        // de-highlight all other boxes
+        var all_click_on_box = document.getElementsByClassName('click-on-box');
+        for (var i = 0; i < all_click_on_box.length; i++) {
+            if(all_click_on_box[i].id != element.id){
+                all_click_on_box[i].classList.remove('click-on-box');
+            }
+        }
+        for (var i = 0; i < opacity.length; i++) {
+                opacity[i] = 1;
+        }
+        var update = {'line':{color:colors, size:sizes, opacity:opacity}};
+        Plotly.restyle('scatterPlot', update, 0);    
+        // reset opacity of lines too
+        var graphDiv = document.getElementById('scatterPlot');
+        for (let i = 1; i < graphDiv.data.length; i++) {
+            var update = graphDiv.data[i].line;
+            update.opacity = 1;
+            Plotly.restyle('scatterPlot', update, i);    
+        }
+    }
+};
 
 // dragging and dropping boxes
 function dragStart(e) {
@@ -650,3 +649,33 @@ const insert_crossfade = document.getElementById("insert-crossfade");
 insert_crossfade.addEventListener("click", addCrossfade); 
 const insert_meander = document.getElementById("insert-meander"); 
 insert_meander.addEventListener("click", addMeander); 
+
+function play(){
+    var timeout = 0;
+    for (let i = 0; i < compositionArray.length; i++) {
+        if (compositionArray[i] instanceof Box){
+            setTimeout(function() {
+                console.log('playing: ',compositionArray[i]);
+                sendBox(compositionArray[i].x, compositionArray[i].y);
+                //highlightBoxElement();
+                //sendBox(compositionArray[i].x, compositionArray[i].y);
+            }, timeout);
+        }
+        else if (compositionArray[i] instanceof Meander){
+            setTimeout(function() {
+                console.log(compositionArray[i]);
+                //highlightBoxElement();
+                //sendBox(compositionArray[i].x, compositionArray[i].y);
+            }, timeout);
+        }
+        else if (compositionArray[i] instanceof Crossfade){
+            setTimeout(function() {
+                console.log(compositionArray[i]);
+                //highlightBoxElement();
+                //sendBox(compositionArray[i].x, compositionArray[i].y);
+            }, timeout);
+        }
+        timeout += (compositionArray[i].duration * 1000);
+        //console.log(timeout);
+    }
+};

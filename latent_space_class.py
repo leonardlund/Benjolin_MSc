@@ -127,9 +127,9 @@ class LatentSpace():
                 break
         return path
 
-    def get_meander(self, x1, y1, x2, y2):
-        idx1 = self.get_index_given_latent([x1, y1])
-        idx2 = self.get_index_given_latent([x2, y2])
+    def get_meander(self, x1, y1, z1, x2, y2, z2):
+        idx1 = self.get_index_given_latent([x1, y1, z1])
+        idx2 = self.get_index_given_latent([x2, y2, z2])
         key = str(idx1) + "-" + str(idx2)
         if key in self.path_cache:
             return self.path_cache[key]
@@ -139,44 +139,15 @@ class LatentSpace():
             return path_of_indices
         
     def play_box_handler(self, message):
-        x, y = message
-        index = self.get_index_given_latent([x, y])
+        x, y, z = message
+        index = self.get_index_given_latent([x, y, z])
         self.set_current_point(index=index)
         self.is_playing_crossfade = False
         self.is_playing_meander = False
 
-    def __play_meander_handler(self, message):
-        x1, y1, x2, y2, t = message
-        path_of_indices = self.get_meander(x1, y1, x2, y2)
-        length = path_of_indices.shape[0]
-        time_per_point = t / length
-
-        for i in range(length):
-            params = cloud.parameter[path_of_indices[i], :]
-            params_message = '-'.join([str(int(param)) for param in params])
-            clientPd.send_message("/params", params_message)
-            time.sleep(time_per_point)
-
-    def __play_crossfade_handler(self, message):
-        x1, y1, x2, y2, t = message
-        idx1 = self.get_index_given_latent([x1, y1])
-        idx2 = self.get_index_given_latent([x2, y2])
-        _, params1 = self.get_point_info(index=idx1)
-        _, params2 = self.get_point_info(index=idx2)
-        time_per_point = 0.1
-        steps = 10 * t
-
-        for i in range(steps):
-            b = i / steps
-            a = 1 - b
-            params = params1 * a + params2 * b
-            params_message = '-'.join([str(int(param)) for param in params])
-            clientPd.send_message("/params", params_message)
-            time.sleep(time_per_point)
-
     def play_meander_handler(self, message):
-        x1, y1, x2, y2, t = message
-        path_of_indices = self.get_meander(x1, y1, x2, y2)
+        x1, y1, z1, x2, y2, z2, t = message
+        path_of_indices = self.get_meander(x1, y1, z1, x2, y2, z2)
         length = path_of_indices.shape[0]
         time_per_point = t / length
 
@@ -198,9 +169,9 @@ class LatentSpace():
             time.sleep(time_per_point)
 
     def play_crossfade_handler(self, message):
-        x1, y1, x2, y2, t = message
-        idx1 = self.get_index_given_latent([x1, y1])
-        idx2 = self.get_index_given_latent([x2, y2])
+        x1, y1, z1, x2, y2, z2, t = message
+        idx1 = self.get_index_given_latent([x1, y1, z1])
+        idx2 = self.get_index_given_latent([x2, y2, z2])
         _, params1 = self.get_point_info(index=idx1)
         _, params2 = self.get_point_info(index=idx2)
         time_per_point = 0.1
@@ -225,8 +196,8 @@ class LatentSpace():
             time.sleep(time_per_point)
 
     def drawMeander_handler(self, message):
-        x1, y1, x2, y2 = message
-        path_of_indices = self.get_meander(x1, y1, x2, y2)
+        x1, y1, z1, x2, y2, z2 = message
+        path_of_indices = self.get_meander(x1, y1, z1, x2, y2, z2)
         path_of_latents = self.parameter[path_of_indices, :]
         self.clientJS.send_message("meanderPath", path_of_latents)
 
@@ -244,7 +215,7 @@ if __name__ == "__main__":
     # ENTER HERE THE DIRECTORY OF THE NPZ DATASET
     data_dir = r"C:\Users\Leonard\Desktop\benjo\latent_param_dataset_16.npz"
     dataset = np.load(data_dir)
-    dimensionality = 2
+    dimensionality = 3
 
     ip = "127.0.0.1"  # localhost
     send_port_pd = 8000  # must match the port declared in Pure data

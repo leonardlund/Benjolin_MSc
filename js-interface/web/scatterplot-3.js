@@ -1,4 +1,5 @@
 /* 
+USE THE THREE.JS MODULE HERE
 todo:
 - implement exploration/composition MODES button
     - exploration highlights points in the scatterplot without adding a box (when a new point is highlighted the old one is de-highlighted)

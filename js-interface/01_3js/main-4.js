@@ -132,31 +132,135 @@ function animate() {
 
 function render() {
     const time = Date.now() * 0.5;
-    //particles.rotation.y += 0.0005;
-
-    const geometry = particles.geometry;
-    const attributes = geometry.attributes;
-
-    raycaster.setFromCamera( pointer, camera );
-    intersects = raycaster.intersectObject( particles );
-    //console.clear();
-    console.log('num intersected: '+intersects.length);
-    if ( intersects.length > 0 ) {
-        for ( let i = 0; i < intersects.length; i ++ ) {
-            if ( INTERSECTED != intersects[ 0 ].index) {
-                attributes.size.array[ INTERSECTED ] = PARTICLE_SIZE;
-                INTERSECTED = intersects[ 0 ].index;
-                attributes.size.array[ INTERSECTED ] = PARTICLE_SIZE * 20;
-                attributes.size.needsUpdate = true;
-                break;
-            }
-        }
-    } else if ( INTERSECTED !== null ) {
-        attributes.size.array[ INTERSECTED ] = PARTICLE_SIZE;
-        attributes.size.needsUpdate = true;
-        INTERSECTED = null;
+    pickHelper.pick(pickPosition, scene, camera, time);
+    if (isMouseDown){ // check for click and not drag
+        setTimeout(function(){ if ( !isMouseDown && timer < 500){ pickHelper.click(pickPosition, scene, camera, time); }}, 50);
     }
     renderer.render( scene, camera );
 
 }
 
+let clickedIndices = [];
+
+// HANDLE PICK AND CLICK EVENTS
+let canvas = renderer.domElement;
+class PickHelper {
+    constructor() {
+      this.raycaster = new THREE.Raycaster();
+      this.pickedObject = null;
+      this.pickedObjectIndex = null;
+      this.pickedObjectSavedColor = 0;
+      this.clickedObject = null;
+      this.clickedObjectIndex = null;
+    }
+    pick(normalizedPosition, scene, camera, time) {
+        // restore the color if there is a picked object
+        if (this.pickedObject) {
+            if ( !clickedIndices.includes(this.pickedObjectIndex) ) {
+                particles.geometry.attributes.size.array[ this.pickedObjectIndex ] = PARTICLE_SIZE;
+            }
+            this.pickedObject = undefined;
+            this.pickedObjectIndex = undefined;
+        }
+        // cast a ray through the frustum
+        this.raycaster.setFromCamera(normalizedPosition, camera);
+        // get the list of objects the ray intersected
+        const intersectedObjects = this.raycaster.intersectObjects(scene.children);
+        if (intersectedObjects.length) {
+            // pick the first object. It's the closest one
+            this.pickedObject = intersectedObjects[0].object;
+            this.pickedObjectIndex = intersectedObjects[0].index;
+            particles.geometry.attributes.size.array[ this.pickedObjectIndex ] = PARTICLE_SIZE * 20;
+            particles.geometry.attributes.size.needsUpdate = true;
+            console.log("picked ID: "+intersectedObjects[0].index);
+        }
+    }
+    click(normalizedPosition, scene, camera, time) {
+        // restore the color if there is a picked object
+        if (this.clickedObject) {
+            this.clickedObject = undefined;
+            this.clickedObjectIndex = undefined;
+        }
+        // cast a ray through the frustum
+        this.raycaster.setFromCamera(normalizedPosition, camera);
+        // get the list of objects the ray intersected
+        const intersectedObjects = this.raycaster.intersectObjects(scene.children);
+        if (intersectedObjects.length) {
+            // click the first object. It's the closest one
+            this.clickedObject = intersectedObjects[0].object;
+            this.clickedObjectIndex = intersectedObjects[0].index;
+            clickedIndices.push(this.clickedObjectIndex);
+            // update size
+            particles.geometry.attributes.size.array[ this.clickedObjectIndex ] = PARTICLE_SIZE * 20;
+            particles.geometry.attributes.size.needsUpdate = true;
+            // update color
+            let newcolor = new THREE.Color();
+            newcolor.setRGB( 0, 255, 0 );    
+            particles.geometry.attributes.customColor.array[ this.clickedObjectIndex * 3 ] = newcolor.r;
+            particles.geometry.attributes.customColor.array[ this.clickedObjectIndex * 3 + 1 ] = newcolor.g;
+            particles.geometry.attributes.customColor.array[ this.clickedObjectIndex * 3 + 2 ] = newcolor.b;
+            particles.geometry.attributes.customColor.needsUpdate = true;
+            material.needsUpdate = true
+            console.log("clicked ID: "+intersectedObjects[0].index);
+        }
+    }
+}
+
+const pickPosition = {x: 0, y: 0};
+clearPickPosition();
+
+function getCanvasRelativePosition(event) {
+    const rect = canvas.getBoundingClientRect();
+    return {
+        x: (event.clientX - rect.left) * canvas.width  / rect.width,
+        y: (event.clientY - rect.top ) * canvas.height / rect.height,
+    };
+}
+
+function setPickPosition(event) {
+    const pos = getCanvasRelativePosition(event);
+    pickPosition.x = (pos.x / canvas.width ) *  2 - 1;
+    pickPosition.y = (pos.y / canvas.height) * -2 + 1;  // note we flip Y
+}
+
+function clearPickPosition() {
+    // unlike the mouse which always has a position
+    // if the user stops touching the screen we want
+    // to stop picking. For now we just pick a value
+    // unlikely to pick something
+    pickPosition.x = -100000;
+    pickPosition.y = -100000;
+}
+
+window.addEventListener('mousemove', setPickPosition);
+window.addEventListener('mouseout', clearPickPosition);
+window.addEventListener('mouseleave', clearPickPosition);
+
+window.addEventListener('touchstart', (event) => {
+    // prevent the window from scrolling
+    event.preventDefault();
+    setPickPosition(event.touches[0]);
+  }, {passive: false});
+   
+window.addEventListener('touchmove', (event) => {
+    setPickPosition(event.touches[0]);
+});
+
+window.addEventListener('touchend', clearPickPosition);
+
+const pickHelper = new PickHelper();
+let isMouseDown = false;
+let timer = 0;
+let startTime = 0;
+let endTime = 0;
+
+canvas.onmousedown = function(){
+    isMouseDown = true;
+    startTime = new Date().getTime();
+    let timer = 0;
+}; 
+canvas.onmouseup = function(){
+    isMouseDown = false;
+    endTime = new Date().getTime();
+    timer = endTime -startTime;
+}; 

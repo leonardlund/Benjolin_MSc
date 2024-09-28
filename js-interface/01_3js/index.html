@@ -2,13 +2,15 @@
 <html lang="en">
 	<head>
 		<meta charset="utf-8">
-		<title>My first three.js app</title>
-		<style>
-			body { margin: 0; }
-		</style>
+		<title>Benjolin latent space</title>
+		<!-- Bootstrap CSS -->
+		<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.3.1/dist/css/bootstrap.min.css" 
+		integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+        <link rel="stylesheet" type="text/css" media="all" href="style.css">
 		<script src="/dataset3D.js"></script>
 	</head>
 	<body>
+		
 		<script type="x-shader/x-vertex" id="vertexshader">
 
 			attribute float size;
@@ -45,6 +47,41 @@
 			}
 
 		</script>
+
+
+        <div class="container">
+            <div class="row mt-5 mb-2">
+                <div class="col-md-1"><div style="background-color: white;">
+                    <img id="insert-crossfade" src="imgs/arrow.png" class="img-fluid"></div>
+                </div>
+                <div id="insert-meander" class="col-md-1"><div style="background-color: white;">
+                    <img src="imgs/zigzag.png" class="img-fluid"></div>
+                </div>
+                <div id="bin" class="col-md-1"><div style="background-color: white;">
+                    <img src="imgs/bin.png" class="img-fluid"></div>
+                </div>
+                <div id="play" class="col-md-1"><div style="background-color: white;">
+                    <img src="imgs/play.png" class="img-fluid" onclick="play()"></div>
+                </div>
+                <div id="stop" class="col-md-1"><div style="background-color: white;" onclick="sendStop()">
+                    <img src="imgs/stop.png" class="img-fluid"></div>
+                </div>
+                <div class="col-md-6 text-center pt-3"><h2>Latent benjolin</h2></div>
+            </div>
+        </div>
+        <div class="container">
+            <div class="row mt-5 mb-2">
+                <div class="col-md-1"></div>
+                <div class="col-md-3">
+                    <div id="compose-bar" class="compose-bar"></div>
+                </div>
+                <div class="col-md-8">
+                    <div id="scatterPlot" class="latent-space"></div>
+                </div>
+            </div>
+        </div>
+
+
 		<script type="module" src="/main-4.js"></script>
 	</body>
 </html>

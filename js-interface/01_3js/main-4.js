@@ -32,15 +32,15 @@ function init() {
     scene = new THREE.Scene();
 
     // CAMERA
-    camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 1, 10000 );
+    camera = new THREE.PerspectiveCamera( 45, (window.innerWidth/2) / window.innerHeight , 1, 10000 );
     camera.position.z = 1000;
 
     // RENDERER
     renderer = new THREE.WebGLRenderer();
     renderer.setPixelRatio( window.devicePixelRatio );
-    renderer.setSize( window.innerWidth, window.innerHeight );
+    renderer.setSize( window.innerWidth/2, window.innerHeight* 0.85 );
     renderer.setAnimationLoop( animate );
-    document.body.appendChild( renderer.domElement );
+    document.getElementById( 'scatterPlot' ).appendChild( renderer.domElement );
 
     // controls
     controls = new OrbitControls( camera, renderer.domElement );
@@ -92,7 +92,7 @@ function init() {
         },
         vertexShader: document.getElementById( 'vertexshader' ).textContent,
         fragmentShader: document.getElementById( 'fragmentshader' ).textContent,
-        //blending: THREE.AdditiveBlending,
+        blending: THREE.AdditiveBlending,
         depthTest: false,
         transparent: true
     } );
@@ -109,7 +109,7 @@ function init() {
 
     //
     stats = new Stats();
-    document.body.appendChild( stats.dom );
+    document.getElementById( 'scatterPlot' ).appendChild( stats.dom );
 
 
 }
@@ -120,9 +120,9 @@ function onPointerMove( event ) {
 }
 
 function onWindowResize() {
-    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.aspect = (window.innerWidth /2) / window.innerHeight;
     camera.updateProjectionMatrix();
-    renderer.setSize( window.innerWidth, window.innerHeight );
+    renderer.setSize( window.innerWidth / 2, window.innerHeight * 0.85 );
 }
 
 function animate() {
@@ -136,8 +136,25 @@ function render() {
     if (isMouseDown){ // check for click and not drag
         setTimeout(function(){ if ( !isMouseDown && timer < 500){ pickHelper.click(pickPosition, scene, camera, time); }}, 50);
     }
-    renderer.render( scene, camera );
 
+    // UPDATE FOR THIS TO RUN ONLY ONCE (NOT RENDER ANY NEW POINTS DURING ANIMATION LOOP)
+    /*for ( let i = 0; i < clickedIndices.length; i ++ ) {
+        if ( i != 0 ){
+            let linepoints = []; 
+            linepoints.push( new THREE.Vector3( x[clickedIndices[i-1]] * 100 - 50, 
+                                                y[clickedIndices[i-1]] * 100 - 50, 
+                                                z[clickedIndices[i-1]]  * 100 - 50) ); 
+            linepoints.push( new THREE.Vector3( x[clickedIndices[i]] * 100 - 50, 
+                                                y[clickedIndices[i]] * 100 - 50, 
+                                                z[clickedIndices[i]]  * 100 - 50) ); 
+            const linegeometry = new THREE.BufferGeometry().setFromPoints( linepoints );
+            const linematerial = new THREE.LineBasicMaterial( { color: 0x0000ff } );
+            const line = new THREE.Line( linegeometry, linematerial );
+            scene.add( line );        
+        }
+    }*/
+
+    renderer.render( scene, camera );
 }
 
 let clickedIndices = [];
@@ -195,7 +212,7 @@ class PickHelper {
             particles.geometry.attributes.size.needsUpdate = true;
             // update color
             let newcolor = new THREE.Color();
-            newcolor.setRGB( 0, 255, 0 );    
+            newcolor.setRGB( 0, 255, 0 );
             particles.geometry.attributes.customColor.array[ this.clickedObjectIndex * 3 ] = newcolor.r;
             particles.geometry.attributes.customColor.array[ this.clickedObjectIndex * 3 + 1 ] = newcolor.g;
             particles.geometry.attributes.customColor.array[ this.clickedObjectIndex * 3 + 2 ] = newcolor.b;
@@ -264,3 +281,4 @@ canvas.onmouseup = function(){
     endTime = new Date().getTime();
     timer = endTime -startTime;
 }; 
+

@@ -10,8 +10,9 @@ todo:
     - exploration highlights points in the scatterplot without adding a box (when a new point is highlighted the old one is de-highlighted)
     - composition mode allows to add boxes. When swithcing from composition to exploration the boxes already created are left where they are
 - play button colored while playing
-- establishing times
+- establishing discrete times
 - render arrows instead of lines
+- dashed, dotted arrows
 - highlighting arrows
 - time limit or infinite composition bar?
 - OSC integration
@@ -31,7 +32,10 @@ bugs:
 - render function has problems
 */
 
-
+// VISUALIZATION PROPERTIES
+const scale_x = 100;
+const scale_y = 100;
+const scale_z = 300;
 
 // BASIC PROPERTIES
 const BASE_COLOR = 0xffffff;
@@ -60,7 +64,7 @@ function init() {
 
     // CAMERA
     camera = new THREE.PerspectiveCamera( 45, (window.innerWidth/2) / window.innerHeight , 1, 10000 );
-    camera.position.z = 1000;
+    camera.position.z = 1500;
 
     // RENDERER
     renderer = new THREE.WebGLRenderer();
@@ -77,7 +81,7 @@ function init() {
     controls.dampingFactor = 0.05;
     controls.screenSpacePanning = false;
     controls.minDistance = 1;
-    controls.maxDistance = 1000;
+    controls.maxDistance = 1500;
     controls.maxPolarAngle = Math.PI / 2;
 
     // RENDERING POINTS AS CIRCLES
@@ -91,9 +95,9 @@ function init() {
 	const geometry = new THREE.BufferGeometry();
 	const vertices = [];
 	for ( let i = 0; i < N_POINTS; i ++ ) {
-        let this_x = x[i] * 100 - 50;
-        let this_y = y[i] * 100 - 50;
-        let this_z = z[i] * 100 - 50;
+        let this_x = x[i] * scale_x - (scale_x/2);
+        let this_y = y[i] * scale_y - (scale_y/2);
+        let this_z = z[i] * scale_z - (scale_z/2);
 		vertices.push( this_x, this_y, this_z);
 
         //const vx = Math.random();
@@ -159,28 +163,12 @@ function animate() {
 // RENDER FUNCTION FOR ANIMATION
 function render() {
     const time = Date.now() * 0.5;
-    pickHelper.pick(pickPosition, scene, camera, time);
-    if (isMouseDown){ // check for click and not drag
-        setTimeout(function(){ if ( !isMouseDown && timer < 500){ pickHelper.click(pickPosition, scene, camera, time); }}, 5);
+    if ( !ISPLAYBACKON ){
+        pickHelper.pick(pickPosition, scene, camera, time);
+        if (isMouseDown){ // check for click and not drag
+            setTimeout(function(){ if ( !isMouseDown && timer < 500){ pickHelper.click(pickPosition, scene, camera, time); }}, 5);
+        }    
     }
-
-    // UPDATE FOR THIS TO RUN ONLY ONCE (NOT RENDER ANY NEW POINTS DURING ANIMATION LOOP)
-    /*for ( let i = 0; i < clickedIndices.length; i ++ ) {
-        if ( i != 0 ){
-            let linepoints = []; 
-            linepoints.push( new THREE.Vector3( x[clickedIndices[i-1]] * 100 - 50, 
-                                                y[clickedIndices[i-1]] * 100 - 50, 
-                                                z[clickedIndices[i-1]]  * 100 - 50) ); 
-            linepoints.push( new THREE.Vector3( x[clickedIndices[i]] * 100 - 50, 
-                                                y[clickedIndices[i]] * 100 - 50, 
-                                                z[clickedIndices[i]]  * 100 - 50) ); 
-            const linegeometry = new THREE.BufferGeometry().setFromPoints( linepoints );
-            const linematerial = new THREE.LineBasicMaterial( { color: 0x0000ff } );
-            const line = new THREE.Line( linegeometry, linematerial );
-            scene.add( line ); 
-        }
-    }*/
-
     renderer.render( scene, camera );
 }
 
@@ -215,7 +203,7 @@ class PickHelper {
             this.pickedObjectIndex = intersectedObjects[0].index;
             particles.geometry.attributes.size.array[ this.pickedObjectIndex ] = PARTICLE_SIZE * 20;
             particles.geometry.attributes.size.needsUpdate = true;
-            console.log("picked ID: "+intersectedObjects[0].index);
+            //console.log("picked ID: "+intersectedObjects[0].index);
             sendBox(x[this.pickedObjectIndex], y[this.pickedObjectIndex]);
         }
     }
@@ -291,6 +279,23 @@ function renderPath(){
                     // add dotted line if meander
                     //x: [compositionArray[i-1].x,compositionArray[i+1].x],
                     //y: [compositionArray[i-1].y,compositionArray[i+1].y],
+                    let linepoints = [];
+                    let x1 = compositionArray[i-1].x * scale_x - (scale_x/2),
+                        y1 = compositionArray[i-1].y * scale_y - (scale_y/2),
+                        z1 = compositionArray[i-1].z * scale_z - (scale_z/2);
+                    let x2 = compositionArray[i+1].x * scale_x - (scale_x/2),
+                        y2 = compositionArray[i+1].y * scale_y - (scale_y/2),
+                        z2 = compositionArray[i+1].z * scale_z - (scale_z/2);
+                    linepoints.push( new THREE.Vector3( x1,y1,z1 )); 
+                    linepoints.push( new THREE.Vector3( x2,y2,z2 )); 
+                    let linegeometry = new THREE.BufferGeometry().setFromPoints( linepoints );
+                    let linematerial = new THREE.LineDashedMaterial( {  color: 0xffaa0, dashSize: 3, gapSize: 1 } );
+                    let line = new THREE.Line( linegeometry, linematerial );
+                    //let line = customArrow(x1,y1,z1,x2,y2,z2, 10, 0x0000ff);
+                    let line_name = "crossfade "+compositionArray[i-1].index+' '+compositionArray[i].index;
+                    line.name = line_name;
+                    arrowsIDs.push(line_name);
+                    scene.add( line );
                 }
             }
             if (compositionArray[i] instanceof Crossfade){
@@ -299,6 +304,23 @@ function renderPath(){
                     // add dashed line if crossfade
                     //x: [compositionArray[i-1].x,compositionArray[i+1].x],
                     //y: [compositionArray[i-1].y,compositionArray[i+1].y],
+                    let linepoints = [];
+                    let x1 = compositionArray[i-1].x * scale_x - (scale_x/2),
+                        y1 = compositionArray[i-1].y * scale_y - (scale_y/2),
+                        z1 = compositionArray[i-1].z * scale_z - (scale_z/2);
+                    let x2 = compositionArray[i+1].x * scale_x - (scale_x/2),
+                        y2 = compositionArray[i+1].y * scale_y - (scale_y/2),
+                        z2 = compositionArray[i+1].z * scale_z - (scale_z/2);
+                    linepoints.push( new THREE.Vector3( x1,y1,z1 )); 
+                    linepoints.push( new THREE.Vector3( x2,y2,z2 )); 
+                    let linegeometry = new THREE.BufferGeometry().setFromPoints( linepoints );
+                    let linematerial = new THREE.LineDashedMaterial( {  color: 0xffffff, dashSize: 1, gapSize: 0.5 } );
+                    let line = new THREE.Line( linegeometry, linematerial );
+                    //let line = customArrow(x1,y1,z1,x2,y2,z2, 10, 0x0000ff);
+                    let line_name = "crossfade "+compositionArray[i-1].index+' '+compositionArray[i].index;
+                    line.name = line_name;
+                    arrowsIDs.push(line_name);
+                    scene.add( line );
                 }
             }
             if (compositionArray[i] instanceof Box){
@@ -307,17 +329,20 @@ function renderPath(){
                     // add straight line if jump
                     //x: [compositionArray[i-1].x,compositionArray[i+1].x],
                     //y: [compositionArray[i-1].y,compositionArray[i+1].y],
-                    let linepoints = []; 
-                    linepoints.push( new THREE.Vector3( compositionArray[i-1].x * 100 - 50, 
-                                                        compositionArray[i-1].y * 100 - 50, 
-                                                        compositionArray[i-1].z  * 100 - 50) ); 
-                    linepoints.push( new THREE.Vector3( compositionArray[i].x * 100 - 50, 
-                                                        compositionArray[i].y * 100 - 50, 
-                                                        compositionArray[i].z  * 100 - 50) ); 
+                    let linepoints = [];
+                    let x1 = compositionArray[i-1].x * scale_x - (scale_x/2),
+                        y1 = compositionArray[i-1].y * scale_y - (scale_y/2),
+                        z1 = compositionArray[i-1].z * scale_z - (scale_z/2);
+                    let x2 = compositionArray[i].x * scale_x - (scale_x/2),
+                        y2 = compositionArray[i].y * scale_y - (scale_y/2),
+                        z2 = compositionArray[i].z * scale_z - (scale_z/2);
+                    linepoints.push( new THREE.Vector3( x1,y1,z1 )); 
+                    linepoints.push( new THREE.Vector3( x2,y2,z2 )); 
                     let linegeometry = new THREE.BufferGeometry().setFromPoints( linepoints );
-                    let linematerial = new THREE.LineBasicMaterial( { color: 0x0000ff } );
+                    let linematerial = new THREE.LineBasicMaterial( { color: 0x0000ff, linewidth: 10} );
                     let line = new THREE.Line( linegeometry, linematerial );
-                    let line_name = "jump"+compositionArray[i-1].index+' '+compositionArray[i].index;
+                    //let line = customArrow(x1,y1,z1,x2,y2,z2, 10, 0x0000ff);
+                    let line_name = "jump "+compositionArray[i-1].index+' '+compositionArray[i].index;
                     line.name = line_name;
                     arrowsIDs.push(line_name);
                     scene.add( line );
@@ -326,6 +351,7 @@ function renderPath(){
         }
     } 
 }
+
 
 const pickPosition = {x: 0, y: 0}; // pick position in 2D space
 clearPickPosition();
@@ -708,3 +734,127 @@ const observer = new ResizeObserver(function(mutations) {
     //console.log(mutations[0].target.attributes.id);
     //console.log(mutations[0].contentRect.width, mutations[0].contentRect.height);
 });
+
+
+// HIGHLIGHT BOX ON CLICK
+//let clicked = false;
+//document.addEventListener('mousedown', e => { clicked = true; });
+//document.addEventListener('mousemove', e => { clicked = false; });
+//document.addEventListener('mouseup', event => {
+document.addEventListener('click', event => {
+    highlightBoxElement(event.target);
+})
+
+function highlightBoxElement(element){
+    if (element.className == 'box'){
+        // highlight box
+        element.classList.add('click-on-box');
+        // de-highlight all other boxes
+        var all_click_on_box = document.getElementsByClassName('click-on-box');
+        for (var i = 0; i < all_click_on_box.length; i++) {
+            if(all_click_on_box[i].id != element.id){
+                all_click_on_box[i].classList.remove('click-on-box');
+            }
+        }
+        // highlight marker on plot (decrease opacity of all the other markers)
+        var boxNumber = Number(element.id.split(' ')[1]);
+        // listen to box
+        sendBox(compositionArray[boxNumber].x, compositionArray[boxNumber].y);
+        // find index of resized element in array
+        var index = findIndexGivenCoords(compositionArray[boxNumber].x, compositionArray[boxNumber].y);
+        // reset opacity of all other elements
+        // reset opacity of lines too
+    }
+    else if (element.classList.contains('meander')){
+        // highlight meander
+        element.classList.add('click-on-box');
+        // send OSC and listen to meander 
+        var compositionIndex = Number(element.id.split(' ')[1]);
+        if (compositionIndex != 0 && compositionArray[compositionIndex] instanceof Meander){
+            // check if before and after there are boxes
+            if (compositionArray[compositionIndex-1] instanceof Box && compositionArray[compositionIndex+1] instanceof Box){
+                sendMeander(compositionArray[compositionIndex-1].x, compositionArray[compositionIndex-1].y, 
+                    compositionArray[compositionIndex+1].x, compositionArray[compositionIndex+1].y, 
+                    compositionArray[compositionIndex].duration);
+    }
+        }
+        // highlight arrow on plot (decrease opacity of all the other markers)
+        // de-highlight all other boxes
+        var all_click_on_box = document.getElementsByClassName('click-on-box');
+        for (var i = 0; i < all_click_on_box.length; i++) {
+            if(all_click_on_box[i].id != element.id){
+                all_click_on_box[i].classList.remove('click-on-box');
+            }
+        }
+    }
+    else if (element.classList.contains('crossfade')){
+        // highlight crossfade
+        element.classList.add('click-on-box');
+        // send OSC and listen to crossfade 
+        var compositionIndex = Number(element.id.split(' ')[1]);
+        if (compositionIndex != 0 && compositionArray[compositionIndex] instanceof Crossfade){
+            // check if before and after there are boxes
+            if (compositionArray[compositionIndex-1] instanceof Box && compositionArray[compositionIndex+1] instanceof Box){
+                sendCrossfade(compositionArray[compositionIndex-1].x, compositionArray[compositionIndex-1].y, 
+                            compositionArray[compositionIndex+1].x, compositionArray[compositionIndex+1].y, 
+                            compositionArray[compositionIndex].duration);
+            }
+        }
+        // highlight arrow on plot (decrease opacity of all the other markers)
+        // de-highlight all other boxes
+        var all_click_on_box = document.getElementsByClassName('click-on-box');
+        for (var i = 0; i < all_click_on_box.length; i++) {
+            if(all_click_on_box[i].id != element.id){
+                all_click_on_box[i].classList.remove('click-on-box');
+            }
+        }
+    }
+    else{
+        // de-highlight all other boxes
+        var all_click_on_box = document.getElementsByClassName('click-on-box');
+        for (var i = 0; i < all_click_on_box.length; i++) {
+            if(all_click_on_box[i].id != element.id){
+                all_click_on_box[i].classList.remove('click-on-box');
+            }
+        }
+        // reset opacity of all dots
+        // reset opacity of lines too
+    }
+};
+
+// PLAY FUNCTION
+var ISPLAYBACKON = false;
+var play = function(){
+    var timeout = 0;
+    ISPLAYBACKON = true;
+    for (let i = 0; i < compositionArray.length; i++) {
+        if (compositionArray[i] instanceof Box){
+            setTimeout(function() {
+                console.log('playing: ',compositionArray[i]);
+                //sendBox(compositionArray[i].x, compositionArray[i].y);
+                highlightBoxElement(document.getElementById('box '+i));
+            }, timeout);
+        }
+        else if (compositionArray[i] instanceof Meander){
+            setTimeout(function() {
+                console.log(compositionArray[i]);
+                highlightBoxElement(document.getElementById('box '+i));
+                //sendBox(compositionArray[i].x, compositionArray[i].y);
+            }, timeout);
+        }
+        else if (compositionArray[i] instanceof Crossfade){
+            setTimeout(function() {
+                console.log(compositionArray[i]);
+                highlightBoxElement(document.getElementById('box '+i));
+                //sendBox(compositionArray[i].x, compositionArray[i].y);
+            }, timeout);
+        }
+        timeout += (compositionArray[i].duration * 1000);
+        //console.log(timeout);
+    }
+    setTimeout(function() {
+        console.log('End of composition');
+        ISPLAYBACKON = false;
+    }, timeout);
+};
+document.getElementById("play").onclick = play;

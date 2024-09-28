@@ -16,7 +16,7 @@ From the command line:
 
 ## Running the Demo
 
-1. In <code>node_server</code> run <code>node .</code> 
-2. In <code>frontend</code> run <code>npx vite</code>
-3. Run the python server <code>latent_space_class-2.py</code>
-4. Run the PD benjolin <code>pure-data-benjo-2024.pd</code>
+1. In <code>node_server</code> run <code>node .</code>. This server will relay OSC messages from the browser to the python server through a web socket.
+2. In <code>frontend</code> run <code>npx vite</code>. This script handles the 3D rendering in the browser.
+3. Run the python server <code>latent_space_class-2.py</code>. This script receives coordinates from the browser and sends the corresponding benjolin parameters to the PD synthesizer. 
+4. Run the PD benjolin <code>pure-data-benjo-2024.pd</code>. This pure data synthesizer receives parameters through OSC.

@@ -34,7 +34,7 @@ bugs:
 
 // VISUALIZATION PROPERTIES
 const scale_x = 100;
-const scale_y = 100;
+const scale_y = 200;
 const scale_z = 300;
 
 // BASIC PROPERTIES
@@ -53,7 +53,7 @@ let renderer, scene, camera, material, controls, stats;
 let raycaster, intersects;
 let pointer, INTERSECTED;
 
-const PARTICLE_SIZE = 4;
+const PARTICLE_SIZE = 8;
 
 init();
 
@@ -63,13 +63,13 @@ function init() {
     scene = new THREE.Scene();
 
     // CAMERA
-    camera = new THREE.PerspectiveCamera( 45, (window.innerWidth/2) / window.innerHeight , 1, 10000 );
+    camera = new THREE.PerspectiveCamera( 45, document.getElementById("scatterPlot").offsetWidth / document.getElementById("scatterPlot").offsetHeight , 1, 10000 );
     camera.position.z = 1500;
 
     // RENDERER
     renderer = new THREE.WebGLRenderer();
     renderer.setPixelRatio( window.devicePixelRatio );
-    renderer.setSize( window.innerWidth/2, window.innerHeight* 0.85 );
+    renderer.setSize( document.getElementById("scatterPlot").offsetWidth, document.getElementById("scatterPlot").offsetHeight );
     renderer.setAnimationLoop( animate );
     document.getElementById( 'scatterPlot' ).appendChild( renderer.domElement );
 
@@ -119,7 +119,8 @@ function init() {
         uniforms: {
             color: { value: new THREE.Color( 0xffffff ) },
             pointTexture: { value: new THREE.TextureLoader().load( 'imgs/disc.png' ) },
-            alphaTest: { value: 0.9 }
+            alphaTest: { value: 0.9 },
+            opacity: { value: 0.1 }
         },
         vertexShader: document.getElementById( 'vertexshader' ).textContent,
         fragmentShader: document.getElementById( 'fragmentshader' ).textContent,
@@ -140,7 +141,7 @@ function init() {
 
     // STATS
     stats = new Stats();
-    document.getElementById( 'scatterPlot' ).appendChild( stats.dom );
+    //document.getElementById( 'scatterPlot' ).appendChild( stats.dom );
 
 }
 
@@ -151,9 +152,9 @@ function onPointerMove( event ) {
 }
 // UPDATE WINDOW SIZE
 function onWindowResize() {
-    camera.aspect = (window.innerWidth /2) / window.innerHeight;
+    camera.aspect = document.getElementById("scatterPlot").offsetWidth / document.getElementById("scatterPlot").offsetHeight;
     camera.updateProjectionMatrix();
-    renderer.setSize( window.innerWidth / 2, window.innerHeight * 0.85 );
+    renderer.setSize( document.getElementById("scatterPlot").offsetWidth , document.getElementById("scatterPlot").offsetHeight * 0.85 );
 }
 // ANIMATE FOR CAMERA NAVIGATION
 function animate() {
@@ -163,14 +164,20 @@ function animate() {
 // RENDER FUNCTION FOR ANIMATION
 function render() {
     const time = Date.now() * 0.5;
-    if ( !ISPLAYBACKON ){
+    if ( !ISPLAYBACKON && !ISLONGPLAYBACKON && MOUSEONSCATTERPLOT){
         pickHelper.pick(pickPosition, scene, camera, time);
         if (isMouseDown){ // check for click and not drag
             setTimeout(function(){ if ( !isMouseDown && timer < 500){ pickHelper.click(pickPosition, scene, camera, time); }}, 5);
-        }    
+        }
+    }
+    if ( !MOUSEONSCATTERPLOT ){
+        pointToBasic(CURRENTPICKEDINDEX)
+        CURRENTPICKEDINDEX = null;
     }
     renderer.render( scene, camera );
 }
+
+let CURRENTPICKEDINDEX = null;
 
 // HANDLE PICK AND CLICK EVENTS
 let clickedIndices = [];
@@ -189,9 +196,15 @@ class PickHelper {
         if (this.pickedObject) {
             if ( !clickedIndices.includes(this.pickedObjectIndex) ) {
                 particles.geometry.attributes.size.array[ this.pickedObjectIndex ] = PARTICLE_SIZE;
+                let newcolor = new THREE.Color();
+                newcolor.setRGB( 255, 0, 0 );
+                particles.geometry.attributes.customColor.array[ this.pickedObjectIndex * 3 ] = newcolor.r;
+                particles.geometry.attributes.customColor.array[ this.pickedObjectIndex * 3 + 1 ] = newcolor.g;
+                particles.geometry.attributes.customColor.array[ this.pickedObjectIndex * 3 + 2 ] = newcolor.b;
             }
             this.pickedObject = undefined;
             this.pickedObjectIndex = undefined;
+            CURRENTPICKEDINDEX = this.pickedObjectIndex;
         }
         // cast a ray through the frustum
         this.raycaster.setFromCamera(normalizedPosition, camera);
@@ -201,8 +214,18 @@ class PickHelper {
             // pick the first object. It's the closest one
             this.pickedObject = intersectedObjects[0].object;
             this.pickedObjectIndex = intersectedObjects[0].index;
-            particles.geometry.attributes.size.array[ this.pickedObjectIndex ] = PARTICLE_SIZE * 20;
-            particles.geometry.attributes.size.needsUpdate = true;
+            if ( !clickedIndices.includes(this.pickedObjectIndex) ){
+                particles.geometry.attributes.size.array[ this.pickedObjectIndex ] = PARTICLE_SIZE * 20;
+                particles.geometry.attributes.size.needsUpdate = true;
+                // change color of picked object to white
+                let newcolor = new THREE.Color();
+                newcolor.setRGB( 255, 255, 255 );
+                particles.geometry.attributes.customColor.array[ this.pickedObjectIndex * 3 ] = newcolor.r;
+                particles.geometry.attributes.customColor.array[ this.pickedObjectIndex * 3 + 1 ] = newcolor.g;
+                particles.geometry.attributes.customColor.array[ this.pickedObjectIndex * 3 + 2 ] = newcolor.b;
+                particles.geometry.attributes.customColor.needsUpdate = true;
+                //material.needsUpdate = true*/
+            }
             //console.log("picked ID: "+intersectedObjects[0].index);
             sendBox(x[this.pickedObjectIndex], y[this.pickedObjectIndex]);
         }
@@ -240,7 +263,7 @@ class PickHelper {
                 addBox(x[ this.clickedObjectIndex ], y[ this.clickedObjectIndex ], z[ this.clickedObjectIndex ], 
                     newcolor.getHexString(), this.clickedObjectIndex); 
                 renderPath();
-                //console.log(pts);        
+                //console.log(pts);
             }
         }
     }
@@ -261,6 +284,23 @@ function pointToBasic(pointIndex){
     particles.geometry.attributes.customColor.needsUpdate = true;
     material.needsUpdate = true
 }
+
+// RENDERING FUNCTIONS
+function pointHighlighted(pointIndex){
+    // restore point rendering to the basic properties
+    // update size
+    particles.geometry.attributes.size.array[ pointIndex ] = PARTICLE_SIZE;
+    particles.geometry.attributes.size.needsUpdate = true;
+    // update color
+    let newcolor = new THREE.Color();
+    newcolor.setRGB( 255, 0, 0 );
+    particles.geometry.attributes.customColor.array[ pointIndex * 3 ] = newcolor.r;
+    particles.geometry.attributes.customColor.array[ pointIndex * 3 + 1 ] = newcolor.g;
+    particles.geometry.attributes.customColor.array[ pointIndex * 3 + 2 ] = newcolor.b;
+    particles.geometry.attributes.customColor.needsUpdate = true;
+    material.needsUpdate = true
+}
+
 
 let arrowsIDs = []
 // RENDER PATH
@@ -286,11 +326,17 @@ function renderPath(){
                     let x2 = compositionArray[i+1].x * scale_x - (scale_x/2),
                         y2 = compositionArray[i+1].y * scale_y - (scale_y/2),
                         z2 = compositionArray[i+1].z * scale_z - (scale_z/2);
+                    
+                    sendDrawMeander( compositionArray[i-1].x,compositionArray[i-1].y,
+                                    compositionArray[i+1].x,compositionArray[i+1].y );
+
+
                     linepoints.push( new THREE.Vector3( x1,y1,z1 )); 
                     linepoints.push( new THREE.Vector3( x2,y2,z2 )); 
                     let linegeometry = new THREE.BufferGeometry().setFromPoints( linepoints );
                     let linematerial = new THREE.LineDashedMaterial( {  color: 0xffaa0, dashSize: 3, gapSize: 1 } );
                     let line = new THREE.Line( linegeometry, linematerial );
+                    line.computeLineDistances();
                     //let line = customArrow(x1,y1,z1,x2,y2,z2, 10, 0x0000ff);
                     let line_name = "crossfade "+compositionArray[i-1].index+' '+compositionArray[i].index;
                     line.name = line_name;
@@ -316,6 +362,7 @@ function renderPath(){
                     let linegeometry = new THREE.BufferGeometry().setFromPoints( linepoints );
                     let linematerial = new THREE.LineDashedMaterial( {  color: 0xffffff, dashSize: 1, gapSize: 0.5 } );
                     let line = new THREE.Line( linegeometry, linematerial );
+                    line.computeLineDistances();
                     //let line = customArrow(x1,y1,z1,x2,y2,z2, 10, 0x0000ff);
                     let line_name = "crossfade "+compositionArray[i-1].index+' '+compositionArray[i].index;
                     line.name = line_name;
@@ -341,11 +388,20 @@ function renderPath(){
                     let linegeometry = new THREE.BufferGeometry().setFromPoints( linepoints );
                     let linematerial = new THREE.LineBasicMaterial( { color: 0x0000ff, linewidth: 10} );
                     let line = new THREE.Line( linegeometry, linematerial );
-                    //let line = customArrow(x1,y1,z1,x2,y2,z2, 10, 0x0000ff);
                     let line_name = "jump "+compositionArray[i-1].index+' '+compositionArray[i].index;
                     line.name = line_name;
                     arrowsIDs.push(line_name);
                     scene.add( line );
+
+                    //var to = new THREE.Vector3( x2, y2, z2 );
+                    //var from = new THREE.Vector3( x1, y1, z1 );
+                    //var direction = to.clone().sub(from);
+                    //var length = direction.length();
+                    //var arrowHelper = new THREE.ArrowHelper(direction.normalize(), from, length, 0xffff00 );
+                    //arrowHelper.line.material = linematerial;
+                    //arrowHelper.line.computeLineDistances();
+                    //scene.add( arrowHelper );
+
                 }
             }
         }
@@ -403,6 +459,7 @@ canvas.onmouseup = function(){
     timer = endTime -startTime;
 }; 
 
+
 // COMPOSITION FUNCTIONALITIES
 class Box{
     constructor(x, y, z, duration, arrayIndex){
@@ -433,7 +490,7 @@ function addBox(boxx, boxy, boxz, randomcolor, arrayIndex) {
     newBox.id = 'box '+numBoxes;
     newBox.style["background-color"] = '#'+randomcolor;
     newBox.style["height"] = '5vh';
-    newBox.style["width"] = '60%';
+    newBox.style["width"] = '100%';
     newBox.style["resize"] = 'vertical';
     newBox.style["overflow-x"] = 'auto';
     newBox.draggable = 'true';
@@ -445,7 +502,7 @@ function addBox(boxx, boxy, boxz, randomcolor, arrayIndex) {
     document.getElementById("compose-bar").appendChild(newBox); 
     console.log(newBox.id);
     numBoxes += 1;
-    var duration = 2;
+    var duration = 4;
     compositionArray.push(new Box(boxx, boxy, boxz, duration, arrayIndex));
     //console.log(compositionArray);
     observer.observe(newBox);
@@ -469,9 +526,9 @@ function addCrossfade(){
     const newCrossfade = document.createElement("div");
     newCrossfade.className = 'crossfade text-center';
     newCrossfade.id = 'box ' + numBoxes;
-    newCrossfade.style["background-color"] = 'DodgerBlue';
+    newCrossfade.style["background-color"] = "rgba(0, 0, 0, 0.)"; //transparent background color
     newCrossfade.style["height"] = '5vh';
-    newCrossfade.style["width"] = '60%';
+    newCrossfade.style["width"] = '100%';
     newCrossfade.style["resize"] = 'vertical';
     newCrossfade.style["overflow-x"] = 'auto';
     newCrossfade.draggable = 'true';
@@ -514,9 +571,9 @@ function addMeander(){
     const newMeander = document.createElement("div");
     newMeander.className = 'meander text-center';
     newMeander.id = 'box ' + numBoxes;
-    newMeander.style["background-color"] = 'DodgerBlue';
+    newMeander.style["background-color"] = "rgba(0, 0, 0, 0.)";
     newMeander.style["height"] = '5vh';
-    newMeander.style["width"] = '60%';
+    newMeander.style["width"] = '100%';
     newMeander.style["resize"] = 'vertical';
     newMeander.style["overflow-x"] = 'auto';
     newMeander.draggable = 'true';
@@ -650,14 +707,6 @@ function exchangeElements(element1, element2){
     observer.observe(clonedElement2);
 }
 
-function findIndexGivenCoords(x_coord, y_coord){
-    // DANGEROUSS!!!!
-    for (var i = 0; i < x.length; i++) {
-        if(x[i] == x_coord && y[i] == y_coord){
-            return i;
-        }
-    }
-}
 
 // implement trash bin
 function dropOnTrashBin(e) {
@@ -726,8 +775,10 @@ const observer = new ResizeObserver(function(mutations) {
         // find index of resized element in array of all point coordinates
         //var index = findIndexGivenCoords(compositionArray[boxNumber].x, compositionArray[boxNumber].y);
         //resize marker
-        //var heightToPointSize = 0.25;
-        //sizes[index] = resized_newHeight * heightToPointSize;
+        var heightToPointSize = 0.25;
+        particles.geometry.attributes.size.array[ compositionArray[boxNumber].arrayIndex ] = PARTICLE_SIZE * resized_newHeight * heightToPointSize;
+        particles.geometry.attributes.size.needsUpdate = true;
+    
         //var update = {'marker':{color:colors, size:sizes, opacity:opacity}};
         //Plotly.restyle('scatterPlot', update, 0);
     }
@@ -759,9 +810,17 @@ function highlightBoxElement(element){
         // highlight marker on plot (decrease opacity of all the other markers)
         var boxNumber = Number(element.id.split(' ')[1]);
         // listen to box
+        ISPLAYBACKON = true;
         sendBox(compositionArray[boxNumber].x, compositionArray[boxNumber].y);
+        if (!ISLONGPLAYBACKON){
+            setTimeout(function() {
+                    console.log("end of playback");
+                    ISPLAYBACKON = false;
+                    sendStop();
+                }
+            , compositionArray[boxNumber].duration * 1000);
+        }
         // find index of resized element in array
-        var index = findIndexGivenCoords(compositionArray[boxNumber].x, compositionArray[boxNumber].y);
         // reset opacity of all other elements
         // reset opacity of lines too
     }
@@ -773,10 +832,19 @@ function highlightBoxElement(element){
         if (compositionIndex != 0 && compositionArray[compositionIndex] instanceof Meander){
             // check if before and after there are boxes
             if (compositionArray[compositionIndex-1] instanceof Box && compositionArray[compositionIndex+1] instanceof Box){
+                ISPLAYBACKON = true;
                 sendMeander(compositionArray[compositionIndex-1].x, compositionArray[compositionIndex-1].y, 
                     compositionArray[compositionIndex+1].x, compositionArray[compositionIndex+1].y, 
                     compositionArray[compositionIndex].duration);
-    }
+                if (!ISLONGPLAYBACKON){
+                    setTimeout(function() {
+                            console.log("end of playback");
+                            ISPLAYBACKON = false;
+                            sendStop();
+                        }
+                    , compositionArray[compositionIndex].duration * 1000);
+                }
+            }
         }
         // highlight arrow on plot (decrease opacity of all the other markers)
         // de-highlight all other boxes
@@ -795,9 +863,18 @@ function highlightBoxElement(element){
         if (compositionIndex != 0 && compositionArray[compositionIndex] instanceof Crossfade){
             // check if before and after there are boxes
             if (compositionArray[compositionIndex-1] instanceof Box && compositionArray[compositionIndex+1] instanceof Box){
+                ISPLAYBACKON = true;
                 sendCrossfade(compositionArray[compositionIndex-1].x, compositionArray[compositionIndex-1].y, 
                             compositionArray[compositionIndex+1].x, compositionArray[compositionIndex+1].y, 
                             compositionArray[compositionIndex].duration);
+                if (!ISLONGPLAYBACKON){
+                    setTimeout(function() {
+                            console.log("end of playback");
+                            ISPLAYBACKON = false;
+                            sendStop();
+                        }
+                    , compositionArray[compositionIndex].duration * 1000);
+                }
             }
         }
         // highlight arrow on plot (decrease opacity of all the other markers)
@@ -817,6 +894,13 @@ function highlightBoxElement(element){
                 all_click_on_box[i].classList.remove('click-on-box');
             }
         }
+
+        if ( !ISLONGPLAYBACKON ){
+            sendStop();
+            ISPLAYBACKON = false;
+            //ISLONGPLAYBACKON = false;
+            console.log("end of playback");
+        }
         // reset opacity of all dots
         // reset opacity of lines too
     }
@@ -824,37 +908,44 @@ function highlightBoxElement(element){
 
 // PLAY FUNCTION
 var ISPLAYBACKON = false;
+var ISLONGPLAYBACKON = false;
 var play = function(){
     var timeout = 0;
     ISPLAYBACKON = true;
+    ISLONGPLAYBACKON = true;
     for (let i = 0; i < compositionArray.length; i++) {
-        if (compositionArray[i] instanceof Box){
+        if( ISLONGPLAYBACKON ){
             setTimeout(function() {
                 console.log('playing: ',compositionArray[i]);
                 //sendBox(compositionArray[i].x, compositionArray[i].y);
-                highlightBoxElement(document.getElementById('box '+i));
+                highlightBoxElement(document.getElementById('box '+i));    
             }, timeout);
+            timeout += (compositionArray[i].duration * 1000);    
         }
-        else if (compositionArray[i] instanceof Meander){
-            setTimeout(function() {
-                console.log(compositionArray[i]);
-                highlightBoxElement(document.getElementById('box '+i));
-                //sendBox(compositionArray[i].x, compositionArray[i].y);
-            }, timeout);
-        }
-        else if (compositionArray[i] instanceof Crossfade){
-            setTimeout(function() {
-                console.log(compositionArray[i]);
-                highlightBoxElement(document.getElementById('box '+i));
-                //sendBox(compositionArray[i].x, compositionArray[i].y);
-            }, timeout);
-        }
-        timeout += (compositionArray[i].duration * 1000);
         //console.log(timeout);
     }
     setTimeout(function() {
         console.log('End of composition');
         ISPLAYBACKON = false;
+        ISLONGPLAYBACKON = false;
+        sendStop();
     }, timeout);
 };
 document.getElementById("play").onclick = play;
+
+let MOUSEONSCATTERPLOT = false;
+document.getElementById("scatterPlot").addEventListener("mouseenter", function(  ) {
+    MOUSEONSCATTERPLOT=true;
+});
+document.getElementById("scatterPlot").addEventListener("mouseout", function(  ) { 
+    MOUSEONSCATTERPLOT=false;
+    if (!ISPLAYBACKON && !ISLONGPLAYBACKON ){
+        sendStop();
+    }
+});
+
+var stopPlayback = function(){
+    sendStop();
+    ISLONGPLAYBACKON = false;
+}
+document.getElementById("stop").onclick = stopPlayback;

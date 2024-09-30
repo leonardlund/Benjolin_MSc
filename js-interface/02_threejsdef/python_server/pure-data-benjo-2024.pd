@@ -1,4 +1,4 @@
-#N canvas -841 -220 514 527 12;
+#N canvas 214 38 655 527 12;
 #X declare -lib zexy;
 #X obj 281 25 declare -lib zexy;
 #N canvas 842 277 950 692 test 0;
@@ -414,7 +414,7 @@
 #X connect 25 1 22 0;
 #X coords 0 -1 1 1 202 380 1 100 100;
 #X restore 37 6 pd test;
-#X obj 37 434 dac~;
+#X obj 37 458 dac~;
 #X obj 282 86 oscparse;
 #X obj 282 60 netreceive -u -b 8000;
 #X obj 282 110 list trim;
@@ -432,10 +432,15 @@
 #X obj 283 180 symbol2list -;
 #X obj 37 400 *~;
 #X obj 72 400 hsl 162 19 0 1 0 0 empty empty vol 10 10 0 12 #fcfcfc #000000 #000000 0 1;
+#X obj 392 133 route stop;
+#X obj 37 424 *~;
+#X obj 392 157 s BENJ-ON;
+#X obj 70 424 r BENJ-ON;
 #X connect 1 0 18 0;
 #X connect 3 0 5 0;
 #X connect 4 0 3 0;
 #X connect 5 0 6 0;
+#X connect 5 0 20 0;
 #X connect 6 0 7 0;
 #X connect 7 0 17 0;
 #X connect 8 0 9 0;
@@ -447,6 +452,9 @@
 #X connect 8 6 15 0;
 #X connect 8 7 16 0;
 #X connect 17 0 8 0;
-#X connect 18 0 2 0;
-#X connect 18 0 2 1;
+#X connect 18 0 21 0;
 #X connect 19 0 18 1;
+#X connect 20 0 22 0;
+#X connect 21 0 2 0;
+#X connect 21 0 2 1;
+#X connect 23 0 21 1;

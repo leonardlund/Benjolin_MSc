@@ -54,7 +54,7 @@ var sendMeander = function (send_start_x, send_start_y, send_end_x, send_end_y, 
     });
 }
 
-var sendDrawMeander = function (send_start_x, send_start_y, send_end_x, send_end_y, meander_time){
+var sendDrawMeander = function (send_start_x, send_start_y, send_end_x, send_end_y){
     port.send({
         address: "/draw/meander",
         args: [
@@ -74,11 +74,6 @@ var sendDrawMeander = function (send_start_x, send_start_y, send_end_x, send_end
                 type: "f",
                 value: send_end_y
             },
-            {
-                type: "f",
-                value: meander_time
-            }
-
         ]
     });
 }

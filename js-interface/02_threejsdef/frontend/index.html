@@ -39,13 +39,13 @@
 
 			void main() {
 
-				gl_FragColor = vec4( color * vColor, 1.0 );
+				gl_FragColor = vec4( color * vColor, 1.0);
 				gl_FragColor = gl_FragColor * texture2D( pointTexture, gl_PointCoord );
 
 			}
 		</script>
 
-        <div class="container">
+        <!--<div class="container">
             <div class="row mt-5 mb-2">
                 <div class="col-md-1"><div style="background-color: white;">
                     <img id="insert-crossfade" src="imgs/arrow.png" class="img-fluid"></div>
@@ -75,7 +75,45 @@
                     <div id="scatterPlot" class="latent-space"></div>
                 </div>
             </div>
+        </div>-->
+
+        <div class="container-fluid">
+            <div class="row p-2" style="background-color: #54ADD5; height: 10vh;">
+                <div class="col-12 col-md-3 px-3 d-flex justify-content-between align-self-center">
+                    <div class="text-center">
+                        <img id="insert-crossfade" src="imgs/arrow.png" height="35vh">
+                        <p>crossfade</p>
+                    </div>
+                    <div class="text-center" >
+                        <img id="insert-meander" src="imgs/zigzag.png" height="35vh">
+                        <p>meander</p>
+                    </div>
+                    <div class="text-center">
+                        <img id="bin" src="imgs/bin.png" height="35vh">
+                        <p>bin</p>
+                    </div>
+                    <div class="text-center">
+                        <img id="play" src="imgs/play.png" height="35vh">
+                        <p>play</p>
+                    </div>
+                    <div class="text-center">
+                        <img id="stop" src="imgs/stop.png" height="35vh">
+                        <p>stop</p>
+                    </div>
+
+                </div>
+                <div class="col-md-9 d-flex justify-content-center align-self-center"><h2>Latent Benjolin</h2></div>
+            </div>
+            <div class="row" style="height: 90vh;">
+                <div class="col-2 px-3 py-0 m-0" style="background-color: #254C5E;">
+                    <div id="compose-bar" class="compose-bar"></div>
+                </div>
+                <div class="col-10" style="background-color: #000609;">
+                    <div id="scatterPlot" class="latent-space"></div>
+                </div>
+            </div>
         </div>
+
 
 		<script type="module" src="/main.js"></script>
 	</body>

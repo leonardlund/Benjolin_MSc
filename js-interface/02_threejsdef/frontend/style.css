@@ -7,13 +7,13 @@
     height: 85vh;
 }
 
-.compose-bar {
+/*.compose-bar {
     display: flex;
     flex-direction: column;
     align-items: center;
     background-color:rgb(0, 0, 0);
     height: 85vh;
-}
+}*/
 
 .latent-space {
     display: flex;

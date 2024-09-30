@@ -24,11 +24,12 @@ class LatentSpace():
         self.is_playing_meander = False
 
     def play_benjo(self):
+        self.clientPd.send_message("/stop", 1)
         params_message = '-'.join([str(int(param)) for param in self.current_parameters])
         self.clientPd.send_message("/params", params_message)
 
     def stop_benjo(self):
-        self.clientPd.send_message("/stop", 1)
+        self.clientPd.send_message("/stop", 0)
 
     def get_current_index(self):
         return self.current_index
@@ -234,7 +235,9 @@ class LatentSpace():
         x1, y1, x2, y2 = args[0], args[1], args[2], args[3]
         path_of_indices = self.get_meander(x1, y1, x2, y2)
         path_of_latents = self.parameter[path_of_indices, :]
-        self.clientJS.send_message("meanderPath", path_of_latents)
+        path_of_latents_message = '-'.join([str(int(param)) for param in path_of_latents])
+        print(path_of_latents_message)
+        self.clientJS.send_message("meanderPath", path_of_latents_message)
 
     def stop_handler(self, address: str):
         print(f'received msg: {address}')

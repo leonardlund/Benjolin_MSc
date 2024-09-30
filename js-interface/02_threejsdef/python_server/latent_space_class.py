@@ -24,11 +24,12 @@ class LatentSpace():
         self.is_playing_meander = False
 
     def play_benjo(self):
+        self.clientPd.send_message("/stop", 1)
         params_message = '-'.join([str(int(param)) for param in self.current_parameters])
         self.clientPd.send_message("/params", params_message)
 
     def stop_benjo(self):
-        self.clientPd.send_message("/stop", 1)
+        self.clientPd.send_message("/stop", 0)
 
     def get_current_index(self):
         return self.current_index
@@ -66,7 +67,7 @@ class LatentSpace():
         new_points = np.column_stack((new_x, new_y)) / n
         return new_points
     
-    def find_next_point(self, idz, b, path):
+    def find_next_point(self, a, b, path):
         """
         Finds a point adjacent to a that is in the direction of b, with the least distance in parameter space
 
@@ -133,10 +134,10 @@ class LatentSpace():
         idx1 = self.get_index_given_latent([x1, y1])
         idx2 = self.get_index_given_latent([x2, y2])
         key = str(idx1) + "-" + str(idx2)
-        if self.path_cache[key]:
+        if key in self.path_cache:
             return self.path_cache[key]
         else:
-            path_of_indices = self.get_meander(idx1, idx2)
+            path_of_indices = self.calculate_meander(idx1, idx2)
             self.path_cache[key] = path_of_indices
             return path_of_indices
         
@@ -179,7 +180,7 @@ class LatentSpace():
 
     def play_meander_handler(self, address: str, *args):
         print(f'received msg: {address}, playing meander coords {args[0]:.3f}, {args[1]:.3f} --> {args[2]:.3f}, {args[3]:.3f} in {args[4]:.2f} s')
-        x1, y1, x2, y2, t = args[0], args[1], args[2], args[3], args[4]
+        x1, y1, x2, y2, t = args[0], args[1], args[2], args[3], int(args[4])
         path_of_indices = self.get_meander(x1, y1, x2, y2)
         length = path_of_indices.shape[0]
         time_per_point = t / length
@@ -203,13 +204,13 @@ class LatentSpace():
 
     def play_crossfade_handler(self, address: str, *args):
         print(f'received msg: {address}, playing crossfade coords {args[0]:.3f}, {args[1]:.3f} --> {args[2]:.3f}, {args[3]:.3f} in {args[4]:.2f} s')
-        x1, y1, x2, y2, t = args[0], args[1], args[2], args[3], args[4]
+        x1, y1, x2, y2, t = args[0], args[1], args[2], args[3], int(args[4])
         idx1 = self.get_index_given_latent([x1, y1])
         idx2 = self.get_index_given_latent([x2, y2])
         _, params1 = self.get_point_info(index=idx1)
         _, params2 = self.get_point_info(index=idx2)
         time_per_point = 0.1
-        steps = 10 * int(t)
+        steps = 10 * t
 
         # Create a new thread to play the crossfade in the background
         thread = threading.Thread(target=self._play_crossfade_in_background, args=(params1, params2, steps, time_per_point))
@@ -234,7 +235,9 @@ class LatentSpace():
         x1, y1, x2, y2 = args[0], args[1], args[2], args[3]
         path_of_indices = self.get_meander(x1, y1, x2, y2)
         path_of_latents = self.parameter[path_of_indices, :]
-        self.clientJS.send_message("meanderPath", path_of_latents)
+        path_of_latents_message = '-'.join([str(int(param)) for param in path_of_latents])
+        print(path_of_latents_message)
+        self.clientJS.send_message("meanderPath", path_of_latents_message)
 
     def stop_handler(self, address: str):
         print(f'received msg: {address}')

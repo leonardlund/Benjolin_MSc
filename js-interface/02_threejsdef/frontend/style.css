@@ -52,3 +52,17 @@ hr {
     resize: vertical;
     overflow-x: auto;
 }
+
+.clickable-element:hover {
+    cursor: pointer;
+}
+
+.box:hover {
+    cursor: pointer;
+}
+.meander:hover {
+    cursor: pointer;
+}
+.crossfade:hover {
+    cursor: pointer;
+}

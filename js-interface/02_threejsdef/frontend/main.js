@@ -3,22 +3,16 @@ import Stats from 'three/addons/libs/stats.module.js';
 import * as d3 from "https://cdn.jsdelivr.net/npm/d3@5/+esm";
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-
 /* 
 todo:
-- implement exploration/composition MODES button
+- implement exploration/composition MODES button (CHECK WITH SUPERVISORS)
     - exploration highlights points in the scatterplot without adding a box (when a new point is highlighted the old one is de-highlighted)
     - composition mode allows to add boxes. When swithcing from composition to exploration the boxes already created are left where they are
 - play button colored while playing
-- establishing discrete times
+- establishing discrete times and limit composition bar
 - render arrows instead of lines
-- dashed, dotted arrows
-- highlighting arrows
-- time limit or infinite composition bar?
-- OSC integration
-- play and stop buttons
-- completely responsive webpage
-- touchscreen?
+- highlighting by changing point opacity
+- fix time scales
 
 logic: 
 - you can't click on point if it's the last one being clicked
@@ -26,10 +20,10 @@ logic:
 - if it's playing, clicking anywhere stops the playing OR disable all functions until playing stops
 
 bugs: 
+- problem with logic of stop (keeps sending messages even after if I stopped)
 - what's the problem with meander code?
 - what does the stop button do?
 - why do I need to send two messages for them to work? -- probably a python thing
-- render function has problems
 */
 
 // VISUALIZATION PROPERTIES
@@ -94,6 +88,7 @@ function init() {
     const color = new THREE.Color();
 	const geometry = new THREE.BufferGeometry();
 	const vertices = [];
+    const opacities = new Float32Array( N_POINTS );
 	for ( let i = 0; i < N_POINTS; i ++ ) {
         let this_x = x[i] * scale_x - (scale_x/2);
         let this_y = y[i] * scale_y - (scale_y/2);
@@ -108,10 +103,12 @@ function init() {
 
         colors.push( color.r, color.g, color.b );
         sizes[i] = PARTICLE_SIZE;
+        opacities[i] = 1.0;
 	}
 	geometry.setAttribute( 'position', new THREE.Float32BufferAttribute( vertices, 3 ) );
     geometry.setAttribute( 'customColor', new THREE.Float32BufferAttribute( colors, 3 ) );
     geometry.setAttribute( 'size', new THREE.Float32BufferAttribute( sizes, 1 ) );
+    geometry.setAttribute( 'opacity', new THREE.Float32BufferAttribute( opacities, 1 ) );
 
     //material = new THREE.PointsMaterial( { size: 0.05, vertexColors: true, map: sprite } );
     // GEOMETRY MATERIAL
@@ -119,8 +116,7 @@ function init() {
         uniforms: {
             color: { value: new THREE.Color( 0xffffff ) },
             pointTexture: { value: new THREE.TextureLoader().load( 'imgs/disc.png' ) },
-            alphaTest: { value: 0.9 },
-            opacity: { value: 0.1 }
+            alphaTest: { value: 0.9 }
         },
         vertexShader: document.getElementById( 'vertexshader' ).textContent,
         fragmentShader: document.getElementById( 'fragmentshader' ).textContent,
@@ -242,7 +238,6 @@ class PickHelper {
         const intersectedObjects = this.raycaster.intersectObjects(scene.children);
         if (intersectedObjects.length) {
             if (intersectedObjects[0].index != this.clickedObjectIndex){
-                console.log(intersectedObjects[0].index)
                 // click the first object. It's the closest one
                 this.clickedObject = intersectedObjects[0].object;
                 this.clickedObjectIndex = intersectedObjects[0].index;
@@ -482,30 +477,41 @@ class Crossfade{
 }
 const compositionArray = [];
 
+const MAX_COMPOSITION_TIME = 2 * 60 * 1000; // max compostion time in ms
+function calculateCurrentCompostionTime(){
+    let compositionTime = 0;
+    for (let i = 0; i < compositionArray.length; i++) {
+        compositionTime += compositionArray[i].duration * 1000
+    }
+    return compositionTime
+}
+
 // add a box when a point on the scatterplot is clicked
 var numBoxes = 0
 function addBox(boxx, boxy, boxz, randomcolor, arrayIndex) {
-    let newBox = document.createElement("div");
-    newBox.className = 'box';
-    newBox.id = 'box '+numBoxes;
-    newBox.style["background-color"] = '#'+randomcolor;
-    newBox.style["height"] = '5vh';
-    newBox.style["width"] = '100%';
-    newBox.style["resize"] = 'vertical';
-    newBox.style["overflow-x"] = 'auto';
-    newBox.draggable = 'true';
-    newBox.addEventListener('dragstart', dragStart);
-    newBox.addEventListener('dragenter', dragEnter)
-    newBox.addEventListener('dragover', dragOver);
-    newBox.addEventListener('dragleave', dragLeave);
-    newBox.addEventListener('drop', drop);
-    document.getElementById("compose-bar").appendChild(newBox); 
-    console.log(newBox.id);
-    numBoxes += 1;
-    var duration = 4;
-    compositionArray.push(new Box(boxx, boxy, boxz, duration, arrayIndex));
-    //console.log(compositionArray);
-    observer.observe(newBox);
+    let compositionTime = calculateCurrentCompostionTime();
+    if ( compositionTime < MAX_COMPOSITION_TIME){
+        let newBox = document.createElement("div");
+        newBox.className = 'box';
+        newBox.id = 'box '+numBoxes;
+        newBox.style["background-color"] = '#'+randomcolor;
+        newBox.style["height"] = '5vh';
+        newBox.style["width"] = '100%';
+        newBox.style["resize"] = 'vertical';
+        newBox.style["overflow-x"] = 'auto';
+        newBox.draggable = 'true';
+        newBox.addEventListener('dragstart', dragStart);
+        newBox.addEventListener('dragenter', dragEnter)
+        newBox.addEventListener('dragover', dragOver);
+        newBox.addEventListener('dragleave', dragLeave);
+        newBox.addEventListener('drop', drop);
+        document.getElementById("compose-bar").appendChild(newBox); 
+        numBoxes += 1;
+        var duration = 4;
+        compositionArray.push(new Box(boxx, boxy, boxz, duration, arrayIndex));
+        //console.log(compositionArray);
+        observer.observe(newBox);
+    }
 }
 
 // prevent images inside boxes from being draggable
@@ -516,91 +522,94 @@ function dragImgInsideBox(e) {
 
 // add new crossfade
 function addCrossfade(){
+    let compositionTime = calculateCurrentCompostionTime();
+    if ( compositionTime < MAX_COMPOSITION_TIME){
 
-    const newImg = document.createElement("img");
-    newImg.src = "imgs/arrow.png";
-    newImg.id = "img-inside-box";
-    newImg.className = "img-fluid img-inside-box";
-    newImg.style["height"] = '80%';
+        const newImg = document.createElement("img");
+        newImg.src = "imgs/arrow.png";
+        newImg.id = "img-inside-box";
+        newImg.className = "img-fluid img-inside-box";
+        newImg.style["height"] = '80%';
 
-    const newCrossfade = document.createElement("div");
-    newCrossfade.className = 'crossfade text-center';
-    newCrossfade.id = 'box ' + numBoxes;
-    newCrossfade.style["background-color"] = "rgba(0, 0, 0, 0.)"; //transparent background color
-    newCrossfade.style["height"] = '5vh';
-    newCrossfade.style["width"] = '100%';
-    newCrossfade.style["resize"] = 'vertical';
-    newCrossfade.style["overflow-x"] = 'auto';
-    newCrossfade.draggable = 'true';
+        const newCrossfade = document.createElement("div");
+        newCrossfade.className = 'crossfade text-center';
+        newCrossfade.id = 'box ' + numBoxes;
+        newCrossfade.style["background-color"] = "rgba(0, 0, 0, 0.)"; //transparent background color
+        newCrossfade.style["height"] = '5vh';
+        newCrossfade.style["width"] = '100%';
+        newCrossfade.style["resize"] = 'vertical';
+        newCrossfade.style["overflow-x"] = 'auto';
+        newCrossfade.draggable = 'true';
 
-    newCrossfade.appendChild(newImg)
-    document.getElementById("compose-bar").appendChild(newCrossfade); 
+        newCrossfade.appendChild(newImg)
+        document.getElementById("compose-bar").appendChild(newCrossfade); 
 
-    newCrossfade.addEventListener('dragstart', dragStart);
-    newCrossfade.addEventListener('dragenter', dragEnter)
-    newCrossfade.addEventListener('dragover', dragOver);
-    newCrossfade.addEventListener('dragleave', dragLeave);
-    newCrossfade.addEventListener('drop', drop);
+        newCrossfade.addEventListener('dragstart', dragStart);
+        newCrossfade.addEventListener('dragenter', dragEnter)
+        newCrossfade.addEventListener('dragover', dragOver);
+        newCrossfade.addEventListener('dragleave', dragLeave);
+        newCrossfade.addEventListener('drop', drop);
 
-    newImg.addEventListener('dragstart', dragImgInsideBox);
-    newImg.addEventListener('dragenter', dragImgInsideBox)
-    newImg.addEventListener('dragover', dragImgInsideBox);
-    newImg.addEventListener('dragleave', dragImgInsideBox);
-    newImg.addEventListener('drop', dragImgInsideBox);
+        newImg.addEventListener('dragstart', dragImgInsideBox);
+        newImg.addEventListener('dragenter', dragImgInsideBox)
+        newImg.addEventListener('dragover', dragImgInsideBox);
+        newImg.addEventListener('dragleave', dragImgInsideBox);
+        newImg.addEventListener('drop', dragImgInsideBox);
 
-    console.log(newCrossfade.id);
-    numBoxes += 1;
+        numBoxes += 1;
 
-    var duration = 2;
-    compositionArray.push(new Crossfade(duration));
-    console.log(compositionArray);
-    observer.observe(newCrossfade);
-    // update visualization
+        var duration = 2;
+        compositionArray.push(new Crossfade(duration));
+        observer.observe(newCrossfade);
+        // update visualization
+    }
 
 }
 
 // add new meander
 function addMeander(){
 
-    const newImg = document.createElement("img");
-    newImg.src = "imgs/zigzag.png";
-    newImg.id = "img-inside-box";
-    newImg.className = "img-fluid img-inside-box";
-    newImg.style["height"] = '80%';
+    let compositionTime = calculateCurrentCompostionTime();
+    if ( compositionTime < MAX_COMPOSITION_TIME){
 
-    const newMeander = document.createElement("div");
-    newMeander.className = 'meander text-center';
-    newMeander.id = 'box ' + numBoxes;
-    newMeander.style["background-color"] = "rgba(0, 0, 0, 0.)";
-    newMeander.style["height"] = '5vh';
-    newMeander.style["width"] = '100%';
-    newMeander.style["resize"] = 'vertical';
-    newMeander.style["overflow-x"] = 'auto';
-    newMeander.draggable = 'true';
-    
-    newMeander.appendChild(newImg)
-    document.getElementById("compose-bar").appendChild(newMeander); 
+        const newImg = document.createElement("img");
+        newImg.src = "imgs/zigzag.png";
+        newImg.id = "img-inside-box";
+        newImg.className = "img-fluid img-inside-box";
+        newImg.style["height"] = '80%';
 
-    newMeander.addEventListener('dragstart', dragStart);
-    newMeander.addEventListener('dragenter', dragEnter)
-    newMeander.addEventListener('dragover', dragOver);
-    newMeander.addEventListener('dragleave', dragLeave);
-    newMeander.addEventListener('drop', drop);
+        const newMeander = document.createElement("div");
+        newMeander.className = 'meander text-center';
+        newMeander.id = 'box ' + numBoxes;
+        newMeander.style["background-color"] = "rgba(0, 0, 0, 0.)";
+        newMeander.style["height"] = '5vh';
+        newMeander.style["width"] = '100%';
+        newMeander.style["resize"] = 'vertical';
+        newMeander.style["overflow-x"] = 'auto';
+        newMeander.draggable = 'true';
+        
+        newMeander.appendChild(newImg)
+        document.getElementById("compose-bar").appendChild(newMeander); 
 
-    newImg.addEventListener('dragstart', dragImgInsideBox);
-    newImg.addEventListener('dragenter', dragImgInsideBox)
-    newImg.addEventListener('dragover', dragImgInsideBox);
-    newImg.addEventListener('dragleave', dragImgInsideBox);
-    newImg.addEventListener('drop', dragImgInsideBox);
+        newMeander.addEventListener('dragstart', dragStart);
+        newMeander.addEventListener('dragenter', dragEnter)
+        newMeander.addEventListener('dragover', dragOver);
+        newMeander.addEventListener('dragleave', dragLeave);
+        newMeander.addEventListener('drop', drop);
 
-    console.log(newMeander.id);
-    numBoxes += 1;
+        newImg.addEventListener('dragstart', dragImgInsideBox);
+        newImg.addEventListener('dragenter', dragImgInsideBox)
+        newImg.addEventListener('dragover', dragImgInsideBox);
+        newImg.addEventListener('dragleave', dragImgInsideBox);
+        newImg.addEventListener('drop', dragImgInsideBox);
 
-    var duration = 2;
-    compositionArray.push(new Meander(duration));
-    console.log(compositionArray);
-    observer.observe(newMeander);
-    // update visualization
+        numBoxes += 1;
+
+        var duration = 2;
+        compositionArray.push(new Meander(duration));
+        observer.observe(newMeander);
+        // update visualization
+    }
 }
 
 // handling navbar elements
@@ -658,7 +667,6 @@ function dragStart(e) {
         // swap boxes
         exchangeElements(draggable_node, target_node);
         [compositionArray[index_draggable], compositionArray[index_target]] = [compositionArray[index_target], compositionArray[index_draggable]];
-        console.log(compositionArray);
 
         // correct ids
         let new_target_node = document.getElementById('box '+ (index_target));
@@ -739,7 +747,6 @@ function dropOnTrashBin(e) {
     compositionArray.splice(comp_index, 1);
     // reduce number of boxes
     console.log('removing element: '+ comp_index);
-    console.log('composition array: '+ compositionArray);
     // update visualization
     renderPath();
 }
@@ -761,7 +768,6 @@ const observer = new ResizeObserver(function(mutations) {
     var resized_newHeight = mutations[0].contentRect.height; // height in px
     // scale px to width of marker: 100px = 20px marker
     console.log('resizing '+resizedID);
-    console.log(compositionArray);
 
     // update box duration in composition array
     var boxNumber = Number(resizedID.split(' ')[1]);
@@ -810,11 +816,12 @@ function highlightBoxElement(element){
         // highlight marker on plot (decrease opacity of all the other markers)
         var boxNumber = Number(element.id.split(' ')[1]);
         // listen to box
-        ISPLAYBACKON = true;
         sendBox(compositionArray[boxNumber].x, compositionArray[boxNumber].y);
-        if (!ISLONGPLAYBACKON){
+        if ( !ISLONGPLAYBACKON ){
+            ISPLAYBACKON = true;
             setTimeout(function() {
-                    console.log("end of playback");
+                    document.getElementById(element.id).classList.remove('click-on-box');
+                    console.log("end of single box playback");
                     ISPLAYBACKON = false;
                     sendStop();
                 }
@@ -832,15 +839,16 @@ function highlightBoxElement(element){
         if (compositionIndex != 0 && compositionArray[compositionIndex] instanceof Meander){
             // check if before and after there are boxes
             if (compositionArray[compositionIndex-1] instanceof Box && compositionArray[compositionIndex+1] instanceof Box){
-                ISPLAYBACKON = true;
                 sendMeander(compositionArray[compositionIndex-1].x, compositionArray[compositionIndex-1].y, 
                     compositionArray[compositionIndex+1].x, compositionArray[compositionIndex+1].y, 
                     compositionArray[compositionIndex].duration);
                 if (!ISLONGPLAYBACKON){
+                    ISPLAYBACKON = true;
                     setTimeout(function() {
-                            console.log("end of playback");
+                            console.log("end of single box playback");
                             ISPLAYBACKON = false;
                             sendStop();
+                            document.getElementById(element.id).classList.remove('click-on-box');
                         }
                     , compositionArray[compositionIndex].duration * 1000);
                 }
@@ -863,15 +871,16 @@ function highlightBoxElement(element){
         if (compositionIndex != 0 && compositionArray[compositionIndex] instanceof Crossfade){
             // check if before and after there are boxes
             if (compositionArray[compositionIndex-1] instanceof Box && compositionArray[compositionIndex+1] instanceof Box){
-                ISPLAYBACKON = true;
                 sendCrossfade(compositionArray[compositionIndex-1].x, compositionArray[compositionIndex-1].y, 
                             compositionArray[compositionIndex+1].x, compositionArray[compositionIndex+1].y, 
                             compositionArray[compositionIndex].duration);
                 if (!ISLONGPLAYBACKON){
+                    ISPLAYBACKON = true;
                     setTimeout(function() {
-                            console.log("end of playback");
+                            console.log("end of single box playback");
                             ISPLAYBACKON = false;
                             sendStop();
+                            document.getElementById(element.id).classList.remove('click-on-box');
                         }
                     , compositionArray[compositionIndex].duration * 1000);
                 }
@@ -886,16 +895,13 @@ function highlightBoxElement(element){
             }
         }
     }
-    else{
-        // de-highlight all other boxes
-        var all_click_on_box = document.getElementsByClassName('click-on-box');
-        for (var i = 0; i < all_click_on_box.length; i++) {
-            if(all_click_on_box[i].id != element.id){
+    else {
+        if ( !ISLONGPLAYBACKON && ISPLAYBACKON ){
+            // de-highlight all other boxes
+            var all_click_on_box = document.getElementsByClassName('click-on-box');
+            for (var i = 0; i < all_click_on_box.length; i++) {
                 all_click_on_box[i].classList.remove('click-on-box');
             }
-        }
-
-        if ( !ISLONGPLAYBACKON ){
             sendStop();
             ISPLAYBACKON = false;
             //ISLONGPLAYBACKON = false;
@@ -911,25 +917,26 @@ var ISPLAYBACKON = false;
 var ISLONGPLAYBACKON = false;
 var play = function(){
     var timeout = 0;
-    ISPLAYBACKON = true;
     ISLONGPLAYBACKON = true;
     for (let i = 0; i < compositionArray.length; i++) {
-        if( ISLONGPLAYBACKON ){
             setTimeout(function() {
-                console.log('playing: ',compositionArray[i]);
-                //sendBox(compositionArray[i].x, compositionArray[i].y);
-                highlightBoxElement(document.getElementById('box '+i));    
+                if( ISLONGPLAYBACKON ){
+                    console.log('playing: ',compositionArray[i]);
+                    //sendBox(compositionArray[i].x, compositionArray[i].y);
+                    highlightBoxElement(document.getElementById('box '+i)); 
+                }
             }, timeout);
             timeout += (compositionArray[i].duration * 1000);    
-        }
         //console.log(timeout);
     }
     setTimeout(function() {
-        console.log('End of composition');
-        ISPLAYBACKON = false;
-        ISLONGPLAYBACKON = false;
-        sendStop();
-    }, timeout);
+        if( ISLONGPLAYBACKON ){
+            console.log('End of composition');
+            ISLONGPLAYBACKON = false;
+            sendStop();
+            document.getElementById("box "+(compositionArray.length-1)).classList.remove('click-on-box');
+        }
+    }, timeout+100);
 };
 document.getElementById("play").onclick = play;
 
@@ -947,5 +954,10 @@ document.getElementById("scatterPlot").addEventListener("mouseout", function(  )
 var stopPlayback = function(){
     sendStop();
     ISLONGPLAYBACKON = false;
+    ISPLAYBACKON = false;
+    var all_click_on_box = document.getElementsByClassName('click-on-box');
+    for (var i = 0; i < all_click_on_box.length; i++) {
+        all_click_on_box[i].classList.remove('click-on-box');
+    }
 }
 document.getElementById("stop").onclick = stopPlayback;

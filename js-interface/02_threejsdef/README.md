@@ -4,9 +4,9 @@ This code opens a Web Socket in a web page that communicates with a Node.js serv
 The server is responsible for relaying OSC messages bidirectionally between the web page and the python server.
 
 ## Dependencies
-1. Install [Node.js](https://nodejs.org/en) and [npm](https://www.npmjs.com/) using the installer from the website. Check node.js and npm version:<code>node -v</code> and <code>npm -v</code>. 
-2. In <code>node_server</code> run <code>npm install</code>
-3. In <code>frontend</code> run <code>npm install</code>
+1. Download [Node.js](https://nodejs.org/en) and install it using the installer from the website. Check node.js and npm version:<code>node -v</code> and <code>npm -v</code>. 
+2. In <code>node_server</code> run <code>npm install</code> to install required npm packages.
+3. In <code>frontend</code> run <code>npm install</code> to install required npm packages.
 5. Install python library dependencies
 
 ## Running the Demo

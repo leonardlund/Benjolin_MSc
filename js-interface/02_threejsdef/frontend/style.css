@@ -57,12 +57,6 @@ hr {
     cursor: pointer;
 }
 
-.box:hover {
-    cursor: pointer;
-}
-.meander:hover {
-    cursor: pointer;
-}
-.crossfade:hover {
+.hover:hover {
     cursor: pointer;
 }

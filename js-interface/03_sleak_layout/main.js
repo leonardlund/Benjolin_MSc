@@ -13,6 +13,7 @@ document.getElementById("insert-crossfade").onclick = function(){
     numBoxes += 1;
 };
 
+
 // window.height (px) = 2 min
 // when window changes change all multipliers
 // diameter of circle / height of arrow are = to diameter / window.height [min]
@@ -34,6 +35,7 @@ var c = R.circle(100, 60, 50).attr({
 const MAX_R = 55; // corresponds to a duration 25.16 s
 const MIN_R = 5; // circle_duration[s] = (r*2 / window.innerHeight) * 120 
 var start = function () {
+    this.ISMOVING = true;
     this.ox = this.attr("cx");    
     this.oy = this.attr("cy");
     this.or = this.attr("r");
@@ -55,13 +57,40 @@ var move = function (dx, dy) {
     }
 };
 var up = function () {
+    this.ISMOVING = false;
     this.attr({opacity: 0.05 });
-    this.sized.attr({opacity: .5 });
+    this.sized.attr({opacity: .8 });
 }
 c.sized = s;
 c.raph = R;
 c.parentDiv = document.getElementById("box 1");
-c.drag(move, start, up);    
+c.drag(move, start, up);  
+
+var hoverIn_outer = function() {
+    this.attr({"opacity": 1});
+    this.sized.attr({"opacity": 1});
+};
+var hoverOut_outer = function() {
+    if ( !this.ISMOVING ){
+        this.attr({"opacity": 0.05});
+        this.sized.attr({"opacity": 0.8});
+    }
+}
+var hoverIn = function() {
+    this.attr({"opacity": 1});
+    this.outer.attr({"opacity": 1});
+};
+var hoverOut = function() {
+    if ( !this.ISMOVING ){
+        this.attr({"opacity": 0.8});
+        this.outer.attr({"opacity": 0.05});
+    }
+}
+
+s.outer = c;
+c.hover(hoverIn_outer, hoverOut_outer);
+s.hover(hoverIn, hoverOut);
+
 
 
 var R2 = Raphael("box 2", 200, 120);
@@ -80,6 +109,10 @@ c2.sized = s2;
 c2.parentDiv = document.getElementById("box 2");
 c2.raph = R2;
 c2.drag(move, start, up);
+s2.outer = c2;
+c2.hover(hoverIn_outer, hoverOut_outer);
+s2.hover(hoverIn, hoverOut);
+
 
 // from https://jsfiddle.net/TfE2X/
 var R3 = Raphael("box 3", 200, 120);
@@ -136,6 +169,9 @@ c4.sized = s4;
 c4.parentDiv = document.getElementById("box 4");
 c4.raph = R4;
 c4.drag(move, start, up);
+s4.outer = c4;
+c4.hover(hoverIn_outer, hoverOut_outer);
+s4.hover(hoverIn, hoverOut);
 
 
 var R5 = Raphael("box 5", 200, 120);
@@ -218,9 +254,13 @@ c6.sized = s6;
 c6.parentDiv = document.getElementById("box 6");
 c6.raph = R6;
 c6.drag(move, start, up);
+s6.outer = c6;
+c6.hover(hoverIn_outer, hoverOut_outer);
+s6.hover(hoverIn, hoverOut);
 
-var R_timeline = Raphael("timeline", 50, window.innerHeight);
-path_timeline = R_timeline.path("M25 50L25 "+(window.innerHeight-150)).attr({
+
+var R_timeline = Raphael("timeline", 30, window.innerHeight - (90 + 60 + 20) );
+path_timeline = R_timeline.path("M15 0L15 "+(window.innerHeight - (90 + 60 +50))).attr({
     stroke: '#FFFFFF',
     'stroke-width': 1.5,
     'arrow-end':'classic-wide-long',
@@ -228,42 +268,4 @@ path_timeline = R_timeline.path("M25 50L25 "+(window.innerHeight-150)).attr({
 });
 
 
-/*
-var start = function () {
-    // storing original coordinates
-    this.ox = this.attr("cx");    
-    this.oy = this.attr("cy");
-    
-    this.sizer.ox = this.sizer.attr("cx");    
-    this.sizer.oy = this.sizer.attr("cy")
-    
-    this.attr({opacity: 1});
-    this.sizer.attr({opacity: 1});
-},
-move = function (dx, dy) {
-    // move will be called with dx and dy
-    this.attr({cx: this.ox + dx, cy: this.oy + dy});
-    this.sizer.attr({cx: this.sizer.ox + dx, cy: this.sizer.oy + dy});
-},
-up = function () {
-    // restoring state
-    this.attr({opacity: .5});
-    this.sizer.attr({opacity: .5});
-},
-rstart = function() {
-    // storing original coordinates
-    this.ox = this.attr("cx");
-    this.oy = this.attr("cy");
-    this.big.or = this.big.attr("r");
-},
-rmove = function (dx, dy) {
-    // move will be called with dx and dy
-    this.attr({cx: this.ox + dy, cy: this.oy + dy});
-    this.big.attr({r: this.big.or + 
-                    (dy < 0 ? -1 : 1) * Math.sqrt(2*dy*dy)});
-};
-c.drag(move, start, up);    
-c.drag(rmove, rstart);
-c.sizer = s;
-s.big = c;
-*/
+

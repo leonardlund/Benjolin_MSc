@@ -7,6 +7,35 @@
     height: 85vh;
 }
 
+body {
+  background-color:  #000609;
+} 
+
+#timeline{
+    position:absolute;
+    left: 0px; top: 120px;
+    float:left; display:inline; width: 30px;
+    padding: 10px;
+}
+#commands-bar{
+    position:absolute;
+    left: 0px; top: 0px;
+    padding: 30px;
+}
+
+#commands-bar-2{
+    position:absolute;
+    left: 200px; top: 0px;
+    padding: 30px;
+}
+
+
+#composition-bar {
+    position:absolute;
+    left: 60px; top: 120px;
+    float:left; display:inline; width: 200px;
+}
+
 .compose-bar {
     display: flex;
     flex-direction: column;

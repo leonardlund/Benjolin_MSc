@@ -15,13 +15,16 @@
 	<body>
 		<script type="x-shader/x-vertex" id="vertexshader">
 			attribute float size;
+			attribute float opacity;
 			attribute vec3 customColor;
 
 			varying vec3 vColor;
+            varying float myopacity;
 
 			void main() {
 
 				vColor = customColor;
+                myopacity = opacity;
 
 				vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );
 
@@ -36,68 +39,47 @@
 			uniform sampler2D pointTexture;
 
 			varying vec3 vColor;
+            varying float myopacity;
 
 			void main() {
 
-				gl_FragColor = vec4( color * vColor, 1.0);
+				gl_FragColor = vec4( color * vColor, myopacity);
 				gl_FragColor = gl_FragColor * texture2D( pointTexture, gl_PointCoord );
 
 			}
 		</script>
 
-        <!--<div class="container">
-            <div class="row mt-5 mb-2">
-                <div class="col-md-1"><div style="background-color: white;">
-                    <img id="insert-crossfade" src="imgs/arrow.png" class="img-fluid"></div>
-                </div>
-                <div id="insert-meander" class="col-md-1"><div style="background-color: white;">
-                    <img src="imgs/zigzag.png" class="img-fluid"></div>
-                </div>
-                <div id="bin" class="col-md-1"><div style="background-color: white;">
-                    <img src="imgs/bin.png" class="img-fluid"></div>
-                </div>
-                <div id="play" class="col-md-1"><div style="background-color: white;">
-                    <img src="imgs/play.png" class="img-fluid"></div>
-                </div>
-                <div id="stop" class="col-md-1"><div style="background-color: white;" onclick="sendStop()">
-                    <img src="imgs/stop.png" class="img-fluid"></div>
-                </div>
-                <div class="col-md-6 text-center pt-3"><h2>Latent benjolin</h2></div>
-            </div>
-        </div>
-        <div class="container">
-            <div class="row mt-5 mb-2">
-                <div class="col-md-1"></div>
-                <div class="col-md-3">
-                    <div id="compose-bar" class="compose-bar"></div>
-                </div>
-                <div class="col-md-8">
-                    <div id="scatterPlot" class="latent-space"></div>
-                </div>
-            </div>
-        </div>-->
-
         <div class="container-fluid">
             <div class="row p-2" style="background-color: #54ADD5; height: 10vh;">
                 <div class="col-12 col-md-3 px-3 d-flex justify-content-between align-self-center">
                     <div class="text-center">
-                        <img id="insert-crossfade" src="imgs/arrow.png" height="35vh" class="clickable-element">
+                        <button id="insert-crossfade-button">
+                            <img id="insert-crossfade" src="imgs/arrow.png" height="35vh" class="clickable-element">
+                        </button>
                         <p>crossfade</p>
                     </div>
                     <div class="text-center" >
-                        <img id="insert-meander" src="imgs/zigzag.png" height="35vh" class="clickable-element">
+                        <button id="insert-meander-button">
+                            <img id="insert-meander" src="imgs/zigzag.png" height="35vh" class="clickable-element">
+                        </button>
                         <p>meander</p>
                     </div>
                     <div class="text-center">
-                        <img id="bin" src="imgs/bin.png" height="35vh">
+                        <button id="bin-button">
+                            <img id="bin" src="imgs/bin.png" height="35vh">
+                        </button>
                         <p>bin</p>
                     </div>
                     <div class="text-center">
-                        <img id="play" src="imgs/play.png" height="35vh" class="clickable-element">
+                        <button id="play-button">
+                            <img id="play" src="imgs/play.png" height="35vh" class="clickable-element">
+                        </button>
                         <p>play</p>
                     </div>
                     <div class="text-center">
-                        <img id="stop" src="imgs/stop.png" height="35vh" class="clickable-element">
+                        <button id="stop-button">
+                            <img id="stop" src="imgs/stop.png" height="35vh" class="clickable-element">
+                        </button>
                         <p>stop</p>
                     </div>
 

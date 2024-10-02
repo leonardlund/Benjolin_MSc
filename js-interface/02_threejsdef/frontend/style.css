@@ -60,3 +60,13 @@ hr {
 .hover:hover {
     cursor: pointer;
 }
+
+.overlay {
+	background-color: #ff0000;
+	width: 100px;
+	height: 100px;
+	position: absolute;
+	top: 0;
+	left: 0;
+    opacity: 0.5;
+}

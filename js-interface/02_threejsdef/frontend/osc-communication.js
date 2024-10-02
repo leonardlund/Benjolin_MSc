@@ -2,9 +2,13 @@ var port = new osc.WebSocketPort({
     url: "ws://localhost:8081"
 });
 
+let MEANDERS_LIST = [];
 port.on("message", function (oscMessage) {
     $("#message").text(JSON.stringify(oscMessage, undefined, 2));
-    console.log("message", oscMessage);
+    MEANDERS_LIST.push(oscMessage.args[0].split("-"));
+    //console.log(meanders)
+    //console.log("message", oscMessage.args[0].split("-"));
+    //console.log("message", oscMessage[0].split("-"));
 });
 
 port.open();

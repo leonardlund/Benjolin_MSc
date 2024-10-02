@@ -47,7 +47,7 @@ let renderer, scene, camera, material, controls, stats;
 let raycaster, intersects;
 let pointer, INTERSECTED;
 
-const PARTICLE_SIZE = 8;
+const PARTICLE_SIZE = 15;
 
 init();
 
@@ -65,7 +65,7 @@ function init() {
     renderer.setPixelRatio( window.devicePixelRatio );
     renderer.setSize( document.getElementById("scatterPlot").offsetWidth, document.getElementById("scatterPlot").offsetHeight );
     renderer.setAnimationLoop( animate );
-    document.getElementById( 'scatterPlot' ).appendChild( renderer.domElement );
+    document.getElementById( 'scatterPlot' ).prepend( renderer.domElement );
 
     // ORBIT CONTROLS
     controls = new OrbitControls( camera, renderer.domElement );
@@ -311,7 +311,12 @@ function pointHighlighted(pointIndex){
 let arrowsIDs = []
 // RENDER PATH
 function renderPath(){
-    arrowsIDs = []
+    let countMeanders = 0;
+    arrowsIDs = [];
+    console.log(MEANDERS_LIST);
+    //MEANDERS_LIST = [];
+
+    //meanders = [];
     // remove all previous arrows
     for (let i = 0; i < arrowsIDs.length; i++) {
         var selectedObject = scene.getObjectByName(arrowsIDs[i]);
@@ -323,23 +328,31 @@ function renderPath(){
             if (compositionArray[i] instanceof Meander){
                 // check if before and after there are boxes
                 if (compositionArray[i-1] instanceof Box && compositionArray[i+1] instanceof Box){ 
+                    countMeanders += 1;
                     // add dotted line if meander
                     //x: [compositionArray[i-1].x,compositionArray[i+1].x],
                     //y: [compositionArray[i-1].y,compositionArray[i+1].y],
                     let linepoints = [];
+                    
+                    sendDrawMeander( compositionArray[i-1].x,compositionArray[i-1].y,
+                                    compositionArray[i+1].x,compositionArray[i+1].y );
+                    /*let thismeander = MEANDERS_LIST[0];
+                    console.log(thismeander);
+                    for (let i = 0; i < thismeander.length; i++) {
+                        let x1 = x[parseFloat(thismeander[i])] * scale_x - (scale_x/2),
+                            y1 = y[parseFloat(thismeander[i])] * scale_y - (scale_y/2),
+                            z1 = z[parseFloat(thismeander[i])] * scale_z - (scale_z/2);
+                            linepoints.push( new THREE.Vector3( x1,y1,z1 )); 
+                    }*/
                     let x1 = compositionArray[i-1].x * scale_x - (scale_x/2),
                         y1 = compositionArray[i-1].y * scale_y - (scale_y/2),
                         z1 = compositionArray[i-1].z * scale_z - (scale_z/2);
                     let x2 = compositionArray[i+1].x * scale_x - (scale_x/2),
                         y2 = compositionArray[i+1].y * scale_y - (scale_y/2),
                         z2 = compositionArray[i+1].z * scale_z - (scale_z/2);
-                    
-                    sendDrawMeander( compositionArray[i-1].x,compositionArray[i-1].y,
-                                    compositionArray[i+1].x,compositionArray[i+1].y );
-
-
                     linepoints.push( new THREE.Vector3( x1,y1,z1 )); 
                     linepoints.push( new THREE.Vector3( x2,y2,z2 )); 
+
                     let linegeometry = new THREE.BufferGeometry().setFromPoints( linepoints );
                     let linematerial = new THREE.LineDashedMaterial( {  color: 0xffaa0, dashSize: 3, gapSize: 1, opacity: 0.1 } );
                     let line = new THREE.Line( linegeometry, linematerial );
@@ -412,7 +425,7 @@ function renderPath(){
                 }
             }
         }
-    } 
+    }
 }
 
 
@@ -498,6 +511,13 @@ function calculateCurrentCompostionTime(){
     return compositionTime
 }
 
+function pxToDuration(px){
+    // 50 px = 6 s
+    let k = 6 / 50;
+    let dur = k * px;
+    return dur
+}
+
 // add a box when a point on the scatterplot is clicked
 var numBoxes = 0
 function addBox(boxx, boxy, boxz, randomcolor, arrayIndex) {
@@ -507,7 +527,7 @@ function addBox(boxx, boxy, boxz, randomcolor, arrayIndex) {
         newBox.className = 'box hover';
         newBox.id = 'box '+numBoxes;
         newBox.style["background-color"] = '#'+randomcolor;
-        newBox.style["height"] = '5vh';
+        newBox.style["height"] = '50px';
         newBox.style["width"] = '100%';
         newBox.style["resize"] = 'vertical';
         newBox.style["overflow-x"] = 'auto';
@@ -519,7 +539,7 @@ function addBox(boxx, boxy, boxz, randomcolor, arrayIndex) {
         newBox.addEventListener('drop', drop);
         document.getElementById("compose-bar").appendChild(newBox); 
         numBoxes += 1;
-        var duration = 4;
+        var duration = pxToDuration(newBox.clientHeight); 
         compositionArray.push(new Box(boxx, boxy, boxz, duration, arrayIndex));
         //console.log(compositionArray);
         observer.observe(newBox);
@@ -547,7 +567,7 @@ function addCrossfade(){
         newCrossfade.className = 'crossfade text-center hover';
         newCrossfade.id = 'box ' + numBoxes;
         newCrossfade.style["background-color"] = "rgba(0, 0, 0, 0.)"; //transparent background color
-        newCrossfade.style["height"] = '5vh';
+        newCrossfade.style["height"] = '50px';
         newCrossfade.style["width"] = '100%';
         newCrossfade.style["resize"] = 'vertical';
         newCrossfade.style["overflow-x"] = 'auto';
@@ -570,7 +590,7 @@ function addCrossfade(){
 
         numBoxes += 1;
 
-        var duration = 2;
+        var duration = pxToDuration( newCrossfade.clientHeight ); 
         compositionArray.push(new Crossfade(duration));
         observer.observe(newCrossfade);
         // update visualization
@@ -594,7 +614,7 @@ function addMeander(){
         newMeander.className = 'meander text-center hover';
         newMeander.id = 'box ' + numBoxes;
         newMeander.style["background-color"] = "rgba(0, 0, 0, 0.)";
-        newMeander.style["height"] = '5vh';
+        newMeander.style["height"] = '50px';
         newMeander.style["width"] = '100%';
         newMeander.style["resize"] = 'vertical';
         newMeander.style["overflow-x"] = 'auto';
@@ -617,7 +637,7 @@ function addMeander(){
 
         numBoxes += 1;
 
-        var duration = 2;
+        var duration = pxToDuration(newMeander.clientHeight); 
         compositionArray.push(new Meander(duration));
         observer.observe(newMeander);
         // update visualization
@@ -782,9 +802,8 @@ const observer = new ResizeObserver(function(mutations) {
 
     // update box duration in composition array
     var boxNumber = Number(resizedID.split(' ')[1]);
-    var heightToSec = 0.2;
     if(compositionArray[boxNumber] && resized_newHeight != 0){
-        compositionArray[boxNumber].duration = resized_newHeight * heightToSec;
+        compositionArray[boxNumber].duration = pxToDuration(resized_newHeight);
     }
 
     // check if resized element is a box
@@ -822,6 +841,7 @@ var play = function(){
     var timeout = 0;
     ISLONGPLAYBACKON = true;
     disableAllInteractions();
+    console.log("playing composition: ", compositionArray)
     for (let i = 0; i < compositionArray.length; i++) {
             setTimeout(function() {
                 if( ISLONGPLAYBACKON ){
@@ -921,6 +941,7 @@ function highlightBoxElement(element){
             if (compositionIndex != 0 && compositionArray[compositionIndex] instanceof Meander){
                 // check if before and after there are boxes
                 if (compositionArray[compositionIndex-1] instanceof Box && compositionArray[compositionIndex+1] instanceof Box){
+                    sendBox(compositionArray[compositionIndex-1].x, compositionArray[compositionIndex-1].y);
                     sendMeander(compositionArray[compositionIndex-1].x, compositionArray[compositionIndex-1].y, 
                         compositionArray[compositionIndex+1].x, compositionArray[compositionIndex+1].y, 
                         compositionArray[compositionIndex].duration);
@@ -942,6 +963,7 @@ function highlightBoxElement(element){
             if (compositionIndex != 0 && compositionArray[compositionIndex] instanceof Crossfade){
                 // check if before and after there are boxes
                 if (compositionArray[compositionIndex-1] instanceof Box && compositionArray[compositionIndex+1] instanceof Box){
+                    sendBox(compositionArray[compositionIndex-1].x, compositionArray[compositionIndex-1].y);
                     sendCrossfade(compositionArray[compositionIndex-1].x, compositionArray[compositionIndex-1].y, 
                                 compositionArray[compositionIndex+1].x, compositionArray[compositionIndex+1].y, 
                                 compositionArray[compositionIndex].duration);
@@ -968,27 +990,28 @@ function highlightBoxElement(element){
             var boxNumber = Number(element.id.split(' ')[1]);
             // listen to box
             sendBox(compositionArray[boxNumber].x, compositionArray[boxNumber].y);
-                ISPLAYBACKON = true;
         } else if (element.classList.contains('crossfade')){
-            graphicHighlightBox(element);
-            // send OSC and listen to meander 
             var compositionIndex = Number(element.id.split(' ')[1]);
-            if (compositionIndex != 0 && compositionArray[compositionIndex] instanceof Meander){
-                // check if before and after there are boxes
+            // check if before and after there are boxes
+            if (compositionIndex != 0 && compositionArray[compositionIndex] instanceof Crossfade){
+                // send OSC and listen to meander 
                 if (compositionArray[compositionIndex-1] instanceof Box && compositionArray[compositionIndex+1] instanceof Box){
-                    sendMeander(compositionArray[compositionIndex-1].x, compositionArray[compositionIndex-1].y, 
+                    graphicHighlightBox(element);
+                    sendBox(compositionArray[compositionIndex-1].x, compositionArray[compositionIndex-1].y);
+                    sendCrossfade(compositionArray[compositionIndex-1].x, compositionArray[compositionIndex-1].y, 
                         compositionArray[compositionIndex+1].x, compositionArray[compositionIndex+1].y, 
                         compositionArray[compositionIndex].duration);
                 }
             }
         } else if ( element.classList.contains('meander') ){
-            graphicHighlightBox(element);
-            // send OSC and listen to crossfade 
+            // check if before and after there are boxes
             var compositionIndex = Number(element.id.split(' ')[1]);
-            if (compositionIndex != 0 && compositionArray[compositionIndex] instanceof Crossfade){
-                // check if before and after there are boxes
+            if (compositionIndex != 0 && compositionArray[compositionIndex] instanceof Meander){
                 if (compositionArray[compositionIndex-1] instanceof Box && compositionArray[compositionIndex+1] instanceof Box){
-                    sendCrossfade(compositionArray[compositionIndex-1].x, compositionArray[compositionIndex-1].y, 
+                    // send OSC and listen to crossfade 
+                    graphicHighlightBox(element);
+                    sendBox(compositionArray[compositionIndex-1].x, compositionArray[compositionIndex-1].y);
+                    sendMeander(compositionArray[compositionIndex-1].x, compositionArray[compositionIndex-1].y, 
                                 compositionArray[compositionIndex+1].x, compositionArray[compositionIndex+1].y, 
                                 compositionArray[compositionIndex].duration);
                 }
@@ -1026,8 +1049,6 @@ function graphicHighlightBox(element){
                 lineObject.material.opacity = 0.1;    
             }
             let linename = "meander "+compositionArray[compositionIndex-1].arrayIndex+' '+compositionArray[compositionIndex+1].arrayIndex;
-            console.log(linename)
-            console.log(arrowsIDs)
             var meanderObject = scene.getObjectByName( linename );
             meanderObject.material.opacity = 1;
         }
@@ -1068,3 +1089,10 @@ function graphicHighlightBox(element){
         }
     }
 }
+
+
+// TRANSFER THE BOXES AS OVERLAY OBJECT ON THE 3D INTERFACE
+// https://discourse.threejs.org/t/embed-a-div-into-a-scene/2338
+/*let aaaaaa = document.createElement("div");
+aaaaaa.className = 'overlay';
+renderer.domElement.parentNode.appendChild(aaaaaa);*/

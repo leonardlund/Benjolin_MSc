@@ -7,7 +7,7 @@ import time
 import threading
 
 class LatentSpace():
-    def __init__(self, dataset, clientPd, clientJS, dimensionality, k=50):
+    def __init__(self, dataset, clientPd, clientJS, dimensionality, k=150):
         self.dimensionality = dimensionality
         self.clientPd = clientPd
         self.clientJS = clientJS
@@ -185,14 +185,15 @@ class LatentSpace():
         length = path_of_indices.shape[0]
         time_per_point = t / length
 
-        # Create a new thread to play the meander in the background
-        thread = threading.Thread(target=self._play_meander_in_background, args=(length, path_of_indices, time_per_point))
-        thread.start()
         # Set a flag to indicate that the function is running
         self.is_playing_meander = True
         self.is_playing_crossfade = False
+        # Create a new thread to play the meander in the background
+        thread = threading.Thread(target=self._play_meander_in_background, args=(length, path_of_indices, time_per_point))
+        thread.start()
 
     def _play_meander_in_background(self, length, path_of_indices, time_per_point):
+        self.clientPd.send_message("/stop", 1)
         for i in range(length):
             if not self.is_playing_meander:
                 return
@@ -212,12 +213,12 @@ class LatentSpace():
         time_per_point = 0.1
         steps = 10 * t
 
-        # Create a new thread to play the crossfade in the background
-        thread = threading.Thread(target=self._play_crossfade_in_background, args=(params1, params2, steps, time_per_point))
-        thread.start()
         # Set a flag to indicate that the function is running
         self.is_playing_crossfade = True
         self.is_playing_meander = False
+        # Create a new thread to play the crossfade in the background
+        thread = threading.Thread(target=self._play_crossfade_in_background, args=(params1, params2, steps, time_per_point))
+        thread.start()
 
     def _play_crossfade_in_background(self, params1, params2, steps, time_per_point):
         for i in range(steps):
@@ -235,9 +236,9 @@ class LatentSpace():
         x1, y1, x2, y2 = args[0], args[1], args[2], args[3]
         path_of_indices = self.get_meander(x1, y1, x2, y2)
         path_of_latents = self.parameter[path_of_indices, :]
-        path_of_latents_message = '-'.join([str(int(param)) for param in path_of_latents])
-        print(path_of_latents_message)
-        self.clientJS.send_message("meanderPath", path_of_latents_message)
+        #print(path_of_indices)
+        path_of_indices_message = '-'.join([str(int(param)) for param in path_of_indices])
+        self.clientJS.send_message("/meanderPath", path_of_indices_message)
 
     def stop_handler(self, address: str):
         print(f'received msg: {address}')

@@ -21,6 +21,8 @@ logic:
 
 bugs: 
 - BUG: clicking play and stop many times will still send all OSC messages!!
+- BUG: same is true for click on multiple objects fast. If you clicked on one object and then on another one, 
+    the stop message of the previous object will still stop the next one (find a way to avoid sending these messages, maybe with this.)
 - what's the problem with meander code?
 - what does the stop button do?
 - why do I need to send two messages for them to work? -- probably a python thing
@@ -916,61 +918,41 @@ function enableAllInteractions(){
     }
 }
 
-
 function highlightBoxElement(element){
     if ( !ISLONGPLAYBACKON ){
         // highlight box and show what is playing graphically 
         if ( element.classList.contains('box') ){
-            graphicHighlightBox(element);
-            var boxNumber = Number(element.id.split(' ')[1]);
-            // listen to box
-            sendBox(compositionArray[boxNumber].x, compositionArray[boxNumber].y);
-            ISPLAYBACKON = true;
-            setTimeout(function() {
-                if ( !ISLONGPLAYBACKON && ISPLAYBACKON ){
-                    document.getElementById(element.id).classList.remove('click-on-box');
-                    console.log("end of single box playback");
-                    ISPLAYBACKON = false;
-                    sendStop();
-                }
-            }, compositionArray[boxNumber].duration * 1000);
-        } else if (element.classList.contains('meander')){
-            graphicHighlightBox(element);
-            // send OSC and listen to meander 
-            var compositionIndex = Number(element.id.split(' ')[1]);
-            if (compositionIndex != 0 && compositionArray[compositionIndex] instanceof Meander){
-                // check if before and after there are boxes
-                if (compositionArray[compositionIndex-1] instanceof Box && compositionArray[compositionIndex+1] instanceof Box){
-                    sendBox(compositionArray[compositionIndex-1].x, compositionArray[compositionIndex-1].y);
-                    sendMeander(compositionArray[compositionIndex-1].x, compositionArray[compositionIndex-1].y, 
-                        compositionArray[compositionIndex+1].x, compositionArray[compositionIndex+1].y, 
-                        compositionArray[compositionIndex].duration);
-                    ISPLAYBACKON = true;
-                    setTimeout(function() {
-                        if ( !ISLONGPLAYBACKON && ISPLAYBACKON ){
-                            console.log("end of single crossfade playback");
-                            ISPLAYBACKON = false;
-                            sendStop();
-                            document.getElementById(element.id).classList.remove('click-on-box');
-                        }
-                    }, compositionArray[compositionIndex].duration * 1000);
-                }
+            if ( !ISPLAYBACKON ){ 
+                graphicHighlightBox(element);
+                var boxNumber = Number(element.id.split(' ')[1]);
+                // listen to box
+                sendBox(compositionArray[boxNumber].x, compositionArray[boxNumber].y);
+                ISPLAYBACKON = true;
+                setTimeout(function() {
+                    if ( !ISLONGPLAYBACKON && ISPLAYBACKON ){
+                        document.getElementById(element.id).classList.remove('click-on-box');
+                        console.log("end of single box playback");
+                        ISPLAYBACKON = false;
+                        sendStop();
+                    }
+                }, compositionArray[boxNumber].duration * 1000);    
             }
-        } else if (element.classList.contains('crossfade')){
-            graphicHighlightBox(element);
-            // send OSC and listen to crossfade 
-            var compositionIndex = Number(element.id.split(' ')[1]);
-            if (compositionIndex != 0 && compositionArray[compositionIndex] instanceof Crossfade){
-                // check if before and after there are boxes
-                if (compositionArray[compositionIndex-1] instanceof Box && compositionArray[compositionIndex+1] instanceof Box){
-                    sendBox(compositionArray[compositionIndex-1].x, compositionArray[compositionIndex-1].y);
-                    sendCrossfade(compositionArray[compositionIndex-1].x, compositionArray[compositionIndex-1].y, 
-                                compositionArray[compositionIndex+1].x, compositionArray[compositionIndex+1].y, 
-                                compositionArray[compositionIndex].duration);
+        } else if (element.classList.contains('meander')){
+            if ( !ISPLAYBACKON ){ 
+                graphicHighlightBox(element);
+                // send OSC and listen to meander 
+                var compositionIndex = Number(element.id.split(' ')[1]);
+                if (compositionIndex != 0 && compositionArray[compositionIndex] instanceof Meander){
+                    // check if before and after there are boxes
+                    if (compositionArray[compositionIndex-1] instanceof Box && compositionArray[compositionIndex+1] instanceof Box){
+                        sendBox(compositionArray[compositionIndex-1].x, compositionArray[compositionIndex-1].y);
+                        sendMeander(compositionArray[compositionIndex-1].x, compositionArray[compositionIndex-1].y, 
+                            compositionArray[compositionIndex+1].x, compositionArray[compositionIndex+1].y, 
+                            compositionArray[compositionIndex].duration);
                         ISPLAYBACKON = true;
                         setTimeout(function() {
                             if ( !ISLONGPLAYBACKON && ISPLAYBACKON ){
-                                console.log("end of single meander playback");
+                                console.log("end of single crossfade playback");
                                 ISPLAYBACKON = false;
                                 sendStop();
                                 document.getElementById(element.id).classList.remove('click-on-box');
@@ -978,6 +960,31 @@ function highlightBoxElement(element){
                         }, compositionArray[compositionIndex].duration * 1000);
                     }
                 }
+            }
+        } else if (element.classList.contains('crossfade')){
+            if ( !ISPLAYBACKON ){ 
+                graphicHighlightBox(element);
+                // send OSC and listen to crossfade 
+                var compositionIndex = Number(element.id.split(' ')[1]);
+                if (compositionIndex != 0 && compositionArray[compositionIndex] instanceof Crossfade){
+                    // check if before and after there are boxes
+                    if (compositionArray[compositionIndex-1] instanceof Box && compositionArray[compositionIndex+1] instanceof Box){
+                        sendBox(compositionArray[compositionIndex-1].x, compositionArray[compositionIndex-1].y);
+                        sendCrossfade(compositionArray[compositionIndex-1].x, compositionArray[compositionIndex-1].y, 
+                                    compositionArray[compositionIndex+1].x, compositionArray[compositionIndex+1].y, 
+                                    compositionArray[compositionIndex].duration);
+                            ISPLAYBACKON = true;
+                            setTimeout(function() {
+                                if ( !ISLONGPLAYBACKON && ISPLAYBACKON ){
+                                    console.log("end of single meander playback");
+                                    ISPLAYBACKON = false;
+                                    sendStop();
+                                    document.getElementById(element.id).classList.remove('click-on-box');
+                                }
+                            }, compositionArray[compositionIndex].duration * 1000);
+                        }
+                    }
+            }
         } else {
             // in playback mode DO NOTHING on click outside box or on other boxes 
             graphicHighlightBox(element);

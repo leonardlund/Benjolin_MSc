@@ -1,3 +1,8 @@
+# node stuff
+*node_modules/
+*/node_modules
+node_modules
+
 # dataset
 /audio
 /NN/__pycache__

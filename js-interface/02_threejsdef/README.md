@@ -36,7 +36,8 @@ cd ..
 cd frontend
 npm install
 ```
-If there are problems in the installation, you can try to install dependencies separately by running:
+You are good to go!
+<b>If there are problems in the installation<b>, you can try to install dependencies separately by running:
 ```
 cd frontend
 npm install --save three 

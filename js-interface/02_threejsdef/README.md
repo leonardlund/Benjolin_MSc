@@ -73,3 +73,8 @@ cd frontend
 npx vite
 ```
 
+### Running the demo
+Known bugs (solving them at the moment):
+- Path rendering on the point cloud is not accurate
+- Playback when clicking on boxes does not have the same duration every time
+

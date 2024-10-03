@@ -5,23 +5,30 @@ body {
 } 
 
 #timeline{
-    position:absolute;
+    position:fixed;
     left: 0px; top: 120px;
     float:left; display:inline; width: 50px;
     padding: 10px;
+    z-index: 100;
 }
 #commands-bar{
-    position:absolute;
+    position:fixed;
     left: 0px; top: 0px;
     padding: 30px;
+    z-index: 100;
 }
 
 #commands-bar-2{
-    position:absolute;
+    position:fixed;
     left: 200px; top: 0px;
     padding: 30px;
+    z-index: 100;
 }
 
+#scatterPlot{
+    position:fixed;
+
+}
 
 #composition-bar {
     position:absolute;

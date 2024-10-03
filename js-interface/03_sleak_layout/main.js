@@ -4,6 +4,7 @@ const MARGIN_PX = 20
 const SELECTED_OPACITY = 1;
 const MIN_OPACITY = 0.3;
 const HOVER_OPACITY = 0.6;
+const COMPOSITION_BAR_HEIGHT_PX = 1000;
 let raphaels = [];
 
 
@@ -27,7 +28,7 @@ function graphicsOnResize() {
     timeline_pathArray[1][2] = window.innerHeight - (90 + 60 +50);
     path_timeline.attr({path: timeline_pathArray});
 
-    // update box sizes
+    // update box sizes ?
 }
 
 
@@ -43,17 +44,25 @@ const BASIC_ELEMENT_T = 5000 // new element when created has duration 5s
 const MAX_T = 10000 // max element duration is 20s
 const MIN_T = 1000 // min element duration is 1s
 const MAX_COMPOSITION_DURATION = 120000 // 12000 milliseconds = 2 minutes
+
 function timesToPxHeight (time_ms) {
     // adaptively calculate element height in pixel corresponding to time in milliseconds
     // window height : max duration = height_px : time_ms
-    let conversion_factor = window.innerHeight / MAX_COMPOSITION_DURATION;
+    // dependent on window height
+    //let conversion_factor = window.innerHeight / MAX_COMPOSITION_DURATION;
+    
+    // dependent on set size
+    let conversion_factor = COMPOSITION_BAR_HEIGHT_PX / MAX_COMPOSITION_DURATION;
     let height_px = time_ms * conversion_factor;
     return height_px
 }
 function pxHeightToTimesMs (height_px) {
     // adaptively calculate element height in pixel corresponding to time in milliseconds
     // window height : max duration = height_px : time_ms
-    let time_ms = height_px * MAX_COMPOSITION_DURATION / window.innerHeight;
+    // dependent on window height
+    //let time_ms = height_px * MAX_COMPOSITION_DURATION / window.innerHeight;
+    // dependent on set size
+    let time_ms = height_px * MAX_COMPOSITION_DURATION / COMPOSITION_BAR_HEIGHT_PX;
     return time_ms
 }
 
@@ -826,20 +835,22 @@ function exchangeElements(element1, element2){
 
 
 // BOX EXCHANGE     DONE
-// WINDOW SIZE UPDATE
-// CLICK ON POINT CLOUD --> CREATE BOX
-// BUTTONS: CREATE CROSSFADE, CREATE MEANDER, CLICK ON BIN
+// WINDOW SIZE UPDATE       DONE
+// CLICK ON POINT CLOUD --> CREATE BOX      DONE
+// BUTTONS: CREATE CROSSFADE, CREATE MEANDER, CLICK ON BIN      DONE
 // OSC COMMUNICATION
 // HOVER FOR A LONG TIME INCREASES VOLUME AND BIGGER POINTER
-// BUTTONS: PLAY AND STOP
-// LOGIC WITH LONG AND SHORT TERM PLAY FUNCTIONS
+// BUTTONS: PLAY AND STOP       DONE
+// LOGIC WITH LONG AND SHORT TERM PLAY FUNCTIONS        DONE
 // RENDER 
-// FIX POSITION OF TIMELINE, SCATTERPLOT AND COMMANDS WHEN COMPOSTION BAR GOES DOWN
+// FIX POSITION OF TIMELINE, SCATTERPLOT AND COMMANDS WHEN COMPOSTION BAR GOES DOWN (scroll bar only inside composition bar)
+
 
 /* FOR WEBPAGE: 
 - SWITCHABLE EXAMPLES OF SMALL COMPOSITIONS
 - PANE TO CHECK BENJOLIN PARAMETERS (AND MANIPULATE?)
 - CREDITS AND LINKS
+- CONSOLE FOR MESSAGES?
 */
 
 

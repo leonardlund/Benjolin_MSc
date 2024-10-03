@@ -1,253 +1,11 @@
-let numBoxes = 0;
-
-// window.innerHeight = 514 = 2 min = 120 s
-// a radius of 55 means a diameter of 110 --> 110 / 514 = 0.214. multiplied by 120 --> 25.16 s
-const MAX_R = 55; // corresponds to a duration 25.16 s
-const MIN_R = 5; // circle_duration[s] = (r*2 / window.innerHeight) * 120 
-const BASIC_ELEMENT_T = 5000 // new element when created has duration 5s
-const MAX_T = 10000 // max element duration is 20s
-const MIN_T = 1000 // min element duration is 1s
-
-const MAX_COMPOSITION_DURATION = 120000 // 12000 milliseconds = 2 minutes
-function timesToPxHeight (time_ms) {
-    // adaptively calculate element height in pixel corresponding to time in milliseconds
-    // window height : max duration = height_px : time_ms
-    let conversion_factor = window.innerHeight / MAX_COMPOSITION_DURATION;
-    let height_px = time_ms * conversion_factor;
-    return height_px
-}
-
+// GRAPHICS GLOBAL PARAMETERS
 const COMPOSITION_BAR_WIDTH_PX = 150;
 const MARGIN_PX = 20
-// BOX --> CIRCLE
-function drawBox(colorHue){
-    let newBox = document.createElement("div");
-    newBox.id = "box "+numBoxes;
-    newBox.className = 'box hover';
-    document.getElementById("composition-bar").appendChild(newBox); 
+const SELECTED_OPACITY = 1;
+const MIN_OPACITY = 0.3;
+const HOVER_OPACITY = 0.6;
+let raphaels = [];
 
-    let boxStartHeight = timesToPxHeight( BASIC_ELEMENT_T );
-    var R = Raphael("box "+numBoxes, COMPOSITION_BAR_WIDTH_PX, boxStartHeight + MARGIN_PX );
-    var s = R.circle( COMPOSITION_BAR_WIDTH_PX/2 , (boxStartHeight + MARGIN_PX) / 2 , boxStartHeight / 2 ).attr({
-            fill: "hsb("+colorHue+", .5, .5)",
-            stroke: "none",
-            opacity: .3
-        });
-    var c = R.circle( COMPOSITION_BAR_WIDTH_PX/2 , (boxStartHeight + MARGIN_PX) / 2 , boxStartHeight / 2 ).attr({
-            fill: "none",
-            stroke: "hsb("+colorHue+", 1, 1)",
-            "stroke-width": 8,
-            opacity: 0.3
-        });
-    c.sized = s;
-    c.parentDiv = document.getElementById(newBox.id);
-    c.raph = R;
-    c.drag(move, start, up);
-    s.outer = c;
-    //c.hover(hoverIn_outer, hoverOut_outer);
-    //s.hover(hoverIn, hoverOut);
-    
-    newBox.draggable = 'true';
-    numBoxes += 1;
-    return R
-}
-// CIRCLE INTERACTIONS
-var start = function () {
-    this.ISMOVING = true;
-    this.ox = this.attr("cx");    
-    this.oy = this.attr("cy");
-    this.or = this.attr("r");
-    this.attr({opacity: 1});
-    this.sized.ox = this.sized.attr("cx");    
-    this.sized.oy = this.sized.attr("cy");
-    this.sized.or = this.attr("r");
-    this.sized.attr({opacity: 1});
-};
-var move = function (dx, dy) {
-    let newr = this.or + (dy < 0 ? -1 : 1) * Math.sqrt(2*dy*dy);
-    let max_r_px = timesToPxHeight( MAX_T );
-    let min_r_px = timesToPxHeight( MIN_T );
-    if ( newr < max_r_px/2 && newr > min_r_px/2 ) {
-        this.attr({r: newr});
-        this.sized.attr({r: newr });
-        this.parentDiv.style["height"] = newr*2+MARGIN_PX;
-        this.raph.setSize(COMPOSITION_BAR_WIDTH_PX, newr*2+MARGIN_PX);
-        this.attr({cy: (newr*2+MARGIN_PX)/2});
-        this.sized.attr({cy: (newr*2+MARGIN_PX)/2});
-    }
-};
-var up = function () {
-    this.ISMOVING = false;
-    this.attr({opacity: 0.05 });
-    this.sized.attr({opacity: .8 });
-}
-// HOVER CIRCLE INTERACTIONS
-var hoverIn_outer = function() {
-    this.attr({"opacity": 1});
-    this.sized.attr({"opacity": 1});
-};
-var hoverOut_outer = function() {
-    if ( !this.ISMOVING ){
-        this.attr({"opacity": 0.05});
-        this.sized.attr({"opacity": 0.8});
-    }
-}
-var hoverIn = function() {
-    this.attr({"opacity": 1});
-    this.outer.attr({"opacity": 1});
-};
-var hoverOut = function() {
-    if ( !this.ISMOVING ){
-        this.attr({"opacity": 0.8});
-        this.outer.attr({"opacity": 0.05});
-    }
-}
-
-// CROSSFADE
-function drawCrossfade(){
-    let newBox = document.createElement("div");
-    newBox.id = "box "+numBoxes;
-    newBox.className = 'crossfade hover';
-    document.getElementById("composition-bar").appendChild(newBox); 
-
-    let boxStartHeight = timesToPxHeight( BASIC_ELEMENT_T );
-    // from https://jsfiddle.net/TfE2X/
-    var R = Raphael("box "+numBoxes, COMPOSITION_BAR_WIDTH_PX, boxStartHeight+MARGIN_PX);
-    path = R.path("M"+(COMPOSITION_BAR_WIDTH_PX/2)+" 0L"+(COMPOSITION_BAR_WIDTH_PX/2)+" "+boxStartHeight).attr({
-        stroke: '#FFFFFF',
-        'stroke-width': 3,
-        'arrow-end':'classic-wide-long',
-        opacity: 0.3
-    });
-    var pathArray = path.attr("path");
-    handle = R.circle(COMPOSITION_BAR_WIDTH_PX/2,boxStartHeight-5,10).attr({
-        fill: "#FFFFFF",
-        cursor: "pointer",
-        "stroke-width": 10,
-        stroke: "transparent",
-        opacity: 0.3
-    });
-    handle.pathArray = pathArray;
-    handle.path = path;
-    handle.parentDiv = document.getElementById(newBox.id);
-    handle.raph = R;
-    handle.drag(move_crossfade, start_crossfade, up_crossfade);
-
-    newBox.draggable = 'true';
-
-    numBoxes += 1;
-    return R
-}
-// CROSSFADE INTERACTIONS
-var start_crossfade = function () {
-    this.cy = this.attr("cy");
-    this.attr({opacity: 1});
-};
-var move_crossfade = function (dx, dy) {
-    var Y = this.cy + dy;
-    let max_r_px = timesToPxHeight( MAX_T );
-    let min_r_px = timesToPxHeight( MIN_T );
-    if ( Y < max_r_px && Y > min_r_px ) {
-        this.attr({ cy: Y });
-        this.pathArray[1][2] = Y;
-        this.path.attr({path: this.pathArray});
-        this.parentDiv.style["height"] = Y+MARGIN_PX;
-        this.raph.setSize(COMPOSITION_BAR_WIDTH_PX, Y+MARGIN_PX);
-    }
-};
-var up_crossfade = function () {
-    this.attr({opacity: 0.3});
-};
-
-
-function drawMeander(){
-    let newBox = document.createElement("div");
-    newBox.id = "box "+numBoxes;
-    newBox.className = 'meander hover';
-    document.getElementById("composition-bar").appendChild(newBox); 
-
-    let boxStartHeight = timesToPxHeight( BASIC_ELEMENT_T );
-    var R = Raphael("box "+numBoxes, COMPOSITION_BAR_WIDTH_PX, boxStartHeight+MARGIN_PX);
-    path1 = R.path("M"+(COMPOSITION_BAR_WIDTH_PX/2)+" 0L"+(COMPOSITION_BAR_WIDTH_PX/2+15)+" "+ (boxStartHeight/4)).attr({
-        stroke: '#FFFFFF',
-        'stroke-width': 3,
-        opacity: 0.3
-    });
-    path2 = R.path("M"+(COMPOSITION_BAR_WIDTH_PX/2+15)+" "+(boxStartHeight/4)+"L"+(COMPOSITION_BAR_WIDTH_PX/2-15)+" "+(boxStartHeight*2/4)).attr({
-        stroke: '#FFFFFF',
-        'stroke-width': 3,
-        opacity: 0.3
-    });
-    path3 = R.path("M"+(COMPOSITION_BAR_WIDTH_PX/2-15)+" "+(boxStartHeight*2/4)+"L"+(COMPOSITION_BAR_WIDTH_PX/2)+" "+(boxStartHeight*3/4)).attr({
-        stroke: '#FFFFFF',
-        'stroke-width': 3,
-        opacity: 0.3
-    });
-    path4 = R.path("M"+(COMPOSITION_BAR_WIDTH_PX/2)+" "+(boxStartHeight*3/4)+"L"+(COMPOSITION_BAR_WIDTH_PX/2)+" "+boxStartHeight).attr({
-        stroke: '#FFFFFF',
-        'stroke-width': 3,
-        'arrow-end':'classic-wide-long',
-        opacity: 0.3
-    });
-
-    var pathArray1 = path1.attr("path");
-    var pathArray2 = path2.attr("path");
-    var pathArray3 = path3.attr("path");
-    var pathArray4 = path4.attr("path");
-    handle_meander = R.circle(COMPOSITION_BAR_WIDTH_PX/2,boxStartHeight-5,10).attr({
-        fill: "#FFFFFF",
-        cursor: "pointer",
-        "stroke-width": 10,
-        stroke: "transparent",
-        opacity: 0.3
-    });
-    handle_meander.pathArray1 = pathArray1;
-    handle_meander.pathArray2 = pathArray2;
-    handle_meander.pathArray3 = pathArray3;
-    handle_meander.pathArray4 = pathArray4;
-    handle_meander.path1 = path1;
-    handle_meander.path2 = path2;
-    handle_meander.path3 = path3;
-    handle_meander.path4 = path4;
-    handle_meander.parentDiv = document.getElementById("box "+numBoxes);
-    handle_meander.raph = R;
-    handle_meander.drag(move_meander, start_meander, up_meander);
-
-    newBox.draggable = 'true';
-
-    numBoxes += 1;
-    return R
-}
-
-
-var start_meander = function () {
-    this.cy = this.attr("cy");
-    this.attr({opacity: 1});
-};
-var move_meander = function (dx, dy) {
-    var Y = this.cy + dy;
-    let max_r_px = timesToPxHeight( MAX_T );
-    let min_r_px = timesToPxHeight( MIN_T );
-    if ( Y < max_r_px && Y > min_r_px ) {
-        this.attr({ cy: Y });
-        this.pathArray1[1][2] = Y/4;
-        this.pathArray2[0][2] = Y/4;
-        this.pathArray2[1][2] = Y/4*2;
-        this.pathArray3[0][2] = Y/4*2;
-        this.pathArray3[1][2] = Y/4*3;
-        this.pathArray4[0][2] = Y/4*3;
-        this.pathArray4[1][2] = Y;
-        this.path1.attr({path: this.pathArray1});
-        this.path2.attr({path: this.pathArray2});
-        this.path3.attr({path: this.pathArray3});
-        this.path4.attr({path: this.pathArray4});
-        this.parentDiv.style["height"] = Y+MARGIN_PX;
-        this.raph.setSize(COMPOSITION_BAR_WIDTH_PX, Y+MARGIN_PX);
-    }
-};
-var up_meander = function () {
-    this.attr({opacity: 0.3});
-};
 
 // DRAW TIMELINE
 var R_timeline = Raphael("timeline", 50, window.innerHeight - (90 + 60 + 20) );
@@ -257,142 +15,678 @@ path_timeline = R_timeline.path("M25 0L25 "+(window.innerHeight - (90 + 60 +50))
     'arrow-end':'classic-wide-long',
     opacity: 0.5
 });
+var timeline_pathArray = path_timeline.attr("path");
+
+window.addEventListener( 'resize', graphicsOnResize );
+
+// UPDATE WINDOW SIZE
+function graphicsOnResize() {
+    // update timeline
+    R_timeline.setSize(50, window.innerHeight - (90 + 60 + 20));
+    path_timeline.attr({})
+    timeline_pathArray[1][2] = window.innerHeight - (90 + 60 +50);
+    path_timeline.attr({path: timeline_pathArray});
+
+    // update box sizes
+}
+
+
+// INTERACTION FLAGS
+var SELECTED_ELEMENT = null;
+var ISPLAYBACKON = false;
+let QUEUED_TIMEOUTS = []; // all timeouts queued for playback
+
+// COMPOSITION TIMINGS
+// window.innerHeight = 514 = 2 min = 120 s
+// a radius of 55 means a diameter of 110 --> 110 / 514 = 0.214. multiplied by 120 --> 25.16 s
+const BASIC_ELEMENT_T = 5000 // new element when created has duration 5s
+const MAX_T = 10000 // max element duration is 20s
+const MIN_T = 1000 // min element duration is 1s
+const MAX_COMPOSITION_DURATION = 120000 // 12000 milliseconds = 2 minutes
+function timesToPxHeight (time_ms) {
+    // adaptively calculate element height in pixel corresponding to time in milliseconds
+    // window height : max duration = height_px : time_ms
+    let conversion_factor = window.innerHeight / MAX_COMPOSITION_DURATION;
+    let height_px = time_ms * conversion_factor;
+    return height_px
+}
+function pxHeightToTimesMs (height_px) {
+    // adaptively calculate element height in pixel corresponding to time in milliseconds
+    // window height : max duration = height_px : time_ms
+    let time_ms = height_px * MAX_COMPOSITION_DURATION / window.innerHeight;
+    return time_ms
+}
+
+// COMPOSITION FUNCTIONALITIES
+class Box{
+    constructor(x, y, z, duration, arrayIndex){
+        this.x = x;
+        this.y = y;
+        this.z = z;
+        this.duration = duration;
+        this.arrayIndex = arrayIndex; // index in the array
+    }
+}
+class Meander{
+    constructor(duration){
+        this.duration = duration;
+    }
+}
+class Crossfade{
+    constructor(duration){
+        this.duration = duration;
+    }
+}
+
+let numBoxes = 0;
+const compositionArray = [];
+function calculateCurrentCompostionTime(){
+    let compositionTime = 0;
+    for (let i = 0; i < compositionArray.length; i++) {
+        compositionTime += compositionArray[i].duration
+    }
+    return compositionTime
+}
+
+
+
+// BOX --> CIRCLE
+function drawBox(boxx, boxy, boxz, colorHue, arrayIndex){
+    let compositionTime = calculateCurrentCompostionTime();
+    if ( compositionTime < MAX_COMPOSITION_DURATION){
+
+        let newBox = document.createElement("div");
+        newBox.id = "box "+numBoxes;
+        newBox.className = 'box';
+
+        // put out of draw box
+        document.getElementById("composition-bar").appendChild(newBox); 
+
+        let boxStartHeight = timesToPxHeight( BASIC_ELEMENT_T );
+        var R = Raphael("box "+numBoxes, COMPOSITION_BAR_WIDTH_PX, boxStartHeight + MARGIN_PX );
+        var s = R.circle( COMPOSITION_BAR_WIDTH_PX/2 , (boxStartHeight + MARGIN_PX) / 2 , boxStartHeight / 2 ).attr({
+                fill: "hsb("+colorHue+", .5, .5)",
+                stroke: "none",
+                opacity: .3
+            });
+        var c = R.circle( COMPOSITION_BAR_WIDTH_PX/2 , (boxStartHeight + MARGIN_PX) / 2 , boxStartHeight / 2 ).attr({
+                fill: "none",
+                stroke: "hsb("+colorHue+", 1, 1)",
+                "stroke-width": 8,
+                opacity: 0.3
+            });
+        c.sized = s;
+        c.parentDiv = document.getElementById(newBox.id);
+        c.raph = R;
+        c.drag(move, start, up);
+        s.outer = c;
+
+        newBox.draggable = 'true';
+
+        // HOVER INTERACTION
+        newBox.addEventListener("mouseover", (event) => {
+            if ( !ISPLAYBACKON ){
+                let item_index = Number(newBox.id.split(" ")[1])
+                highlightBox( item_index);
+                event.target.style["cursor"] = "pointer";
+            }
+        }); 
+        // CLICK INTERACTION
+        newBox.addEventListener("click", (event) => {
+            if ( !ISPLAYBACKON ){
+                let item_index = Number(newBox.id.split(" ")[1])
+                SELECTED_ELEMENT = item_index;
+                highlightBox( item_index); 
+            }
+        }); 
+        // DRAG AND DROP INTERACTION
+        newBox.addEventListener('dragstart', dragStart);
+        newBox.addEventListener('dragenter', dragEnter)
+        newBox.addEventListener('dragover', dragOver);
+        newBox.addEventListener('dragleave', dragLeave);
+        newBox.addEventListener('drop', drop);
+
+        var duration = pxHeightToTimesMs(boxStartHeight); 
+        compositionArray.push(new Box(boxx, boxy, boxz, duration, arrayIndex));
+
+        numBoxes += 1;
+        raphaels.push(R);
+    }
+}
+// CIRCLE INTERACTIONS
+var start = function () {
+    if ( !ISPLAYBACKON ){
+        this.ISMOVING = true;
+        this.ox = this.attr("cx");    
+        this.oy = this.attr("cy");
+        this.or = this.attr("r");
+        this.attr({opacity: 1});
+        this.sized.ox = this.sized.attr("cx");    
+        this.sized.oy = this.sized.attr("cy");
+        this.sized.or = this.attr("r");
+        this.sized.attr({opacity: 1});
+    }
+};
+var move = function (dx, dy) {
+    if ( !ISPLAYBACKON ){
+        let newr = this.or + (dy < 0 ? -1 : 1) * Math.sqrt(2*dy*dy);
+        let max_r_px = timesToPxHeight( MAX_T );
+        let min_r_px = timesToPxHeight( MIN_T );
+        if ( newr < max_r_px/2 && newr > min_r_px/2 ) {
+            this.attr({r: newr});
+            this.sized.attr({r: newr });
+            this.parentDiv.style["height"] = newr*2+MARGIN_PX;
+            this.raph.setSize(COMPOSITION_BAR_WIDTH_PX, newr*2+MARGIN_PX);
+            this.attr({cy: (newr*2+MARGIN_PX)/2});
+            this.sized.attr({cy: (newr*2+MARGIN_PX)/2});
+        }
+    }
+};
+var up = function () {
+    if ( !ISPLAYBACKON ){
+        this.ISMOVING = false;
+        this.attr({opacity: 0.05 });
+        this.sized.attr({opacity: .8 });
+        let compositionIndex = Number(this.parentDiv.id.split(" ")[1]);
+        compositionArray[compositionIndex].duration = pxHeightToTimesMs(this.attr("r"));
+    }
+}
+
+// CROSSFADE
+function drawCrossfade(){
+    let compositionTime = calculateCurrentCompostionTime();
+    if ( compositionTime < MAX_COMPOSITION_DURATION){
+
+        let newBox = document.createElement("div");
+        newBox.id = "box "+numBoxes;
+        newBox.className = 'crossfade';
+        document.getElementById("composition-bar").appendChild(newBox); 
+
+        let boxStartHeight = timesToPxHeight( BASIC_ELEMENT_T );
+        // from https://jsfiddle.net/TfE2X/
+        var R = Raphael("box "+numBoxes, COMPOSITION_BAR_WIDTH_PX, boxStartHeight+MARGIN_PX);
+        path = R.path("M"+(COMPOSITION_BAR_WIDTH_PX/2)+" 0L"+(COMPOSITION_BAR_WIDTH_PX/2)+" "+boxStartHeight).attr({
+            stroke: '#FFFFFF',
+            'stroke-width': 3,
+            'arrow-end':'classic-wide-long',
+            opacity: 0.3
+        });
+        var pathArray = path.attr("path");
+        handle = R.circle(COMPOSITION_BAR_WIDTH_PX/2,boxStartHeight-5,10).attr({
+            fill: "#FFFFFF",
+            cursor: "pointer",
+            "stroke-width": 10,
+            stroke: "transparent",
+            opacity: 0.3
+        });
+        handle.pathArray = pathArray;
+        handle.path = path;
+        handle.parentDiv = document.getElementById(newBox.id);
+        handle.raph = R;
+        handle.drag(move_crossfade, start_crossfade, up_crossfade);
+
+        newBox.draggable = 'true';
+
+        // HOVER INTERACTION
+        newBox.addEventListener("mouseover", (event) => {
+            if ( !ISPLAYBACKON ){
+                let item_index = Number(newBox.id.split(" ")[1])
+                highlightBox(item_index);
+                event.target.style["cursor"] = "pointer";
+            }
+        }); 
+        // CLICK INTERACTION
+        newBox.addEventListener("click", (event) => {
+            if ( !ISPLAYBACKON ){
+                let item_index = Number(newBox.id.split(" ")[1])
+                SELECTED_ELEMENT = item_index;
+                highlightBox(item_index); 
+            }
+        });
+        // DRAG AND DROP INTERACTION
+        newBox.addEventListener('dragstart', dragStart);
+        newBox.addEventListener('dragenter', dragEnter)
+        newBox.addEventListener('dragover', dragOver);
+        newBox.addEventListener('dragleave', dragLeave);
+        newBox.addEventListener('drop', drop);
+
+        var duration = pxHeightToTimesMs(newBox.clientHeight); 
+        compositionArray.push(new Crossfade(duration));
+
+        numBoxes += 1;
+        raphaels.push(R);
+    }
+}
+// CROSSFADE INTERACTIONS
+var start_crossfade = function () {
+    if ( !ISPLAYBACKON ){
+
+        this.cy = this.attr("cy");
+        this.attr({opacity: 1});
+    }
+};
+var move_crossfade = function (dx, dy) {
+    if ( !ISPLAYBACKON ){
+
+        var Y = this.cy + dy;
+        let max_r_px = timesToPxHeight( MAX_T );
+        let min_r_px = timesToPxHeight( MIN_T );
+        if ( Y < max_r_px && Y > min_r_px ) {
+            this.attr({ cy: Y });
+            this.pathArray[1][2] = Y;
+            this.path.attr({path: this.pathArray});
+            this.parentDiv.style["height"] = Y+MARGIN_PX;
+            this.raph.setSize(COMPOSITION_BAR_WIDTH_PX, Y+MARGIN_PX);
+        }
+    }
+};
+var up_crossfade = function () {
+    if ( !ISPLAYBACKON ){
+        this.attr({opacity: 0.3});
+        let compositionIndex = Number(this.parentDiv.id.split(" ")[1]);
+        compositionArray[compositionIndex].duration = pxHeightToTimesMs(this.attr("cy"));
+    }
+};
+
+
+function drawMeander(){
+    let compositionTime = calculateCurrentCompostionTime();
+    if ( compositionTime < MAX_COMPOSITION_DURATION){
+
+        let newBox = document.createElement("div");
+        newBox.id = "box "+numBoxes;
+        newBox.className = 'meander';
+        document.getElementById("composition-bar").appendChild(newBox); 
+
+        let boxStartHeight = timesToPxHeight( BASIC_ELEMENT_T );
+        var R = Raphael("box "+numBoxes, COMPOSITION_BAR_WIDTH_PX, boxStartHeight+MARGIN_PX);
+        path1 = R.path("M"+(COMPOSITION_BAR_WIDTH_PX/2)+" 0L"+(COMPOSITION_BAR_WIDTH_PX/2+15)+" "+ (boxStartHeight/4)).attr({
+            stroke: '#FFFFFF',
+            'stroke-width': 3,
+            opacity: 0.3
+        });
+        path2 = R.path("M"+(COMPOSITION_BAR_WIDTH_PX/2+15)+" "+(boxStartHeight/4)+"L"+(COMPOSITION_BAR_WIDTH_PX/2-15)+" "+(boxStartHeight*2/4)).attr({
+            stroke: '#FFFFFF',
+            'stroke-width': 3,
+            opacity: 0.3
+        });
+        path3 = R.path("M"+(COMPOSITION_BAR_WIDTH_PX/2-15)+" "+(boxStartHeight*2/4)+"L"+(COMPOSITION_BAR_WIDTH_PX/2)+" "+(boxStartHeight*3/4)).attr({
+            stroke: '#FFFFFF',
+            'stroke-width': 3,
+            opacity: 0.3
+        });
+        path4 = R.path("M"+(COMPOSITION_BAR_WIDTH_PX/2)+" "+(boxStartHeight*3/4)+"L"+(COMPOSITION_BAR_WIDTH_PX/2)+" "+boxStartHeight).attr({
+            stroke: '#FFFFFF',
+            'stroke-width': 3,
+            'arrow-end':'classic-wide-long',
+            opacity: 0.3
+        });
+
+        var pathArray1 = path1.attr("path");
+        var pathArray2 = path2.attr("path");
+        var pathArray3 = path3.attr("path");
+        var pathArray4 = path4.attr("path");
+        handle_meander = R.circle(COMPOSITION_BAR_WIDTH_PX/2,boxStartHeight-5,10).attr({
+            fill: "#FFFFFF",
+            cursor: "pointer",
+            "stroke-width": 10,
+            stroke: "transparent",
+            opacity: 0.3
+        });
+        handle_meander.pathArray1 = pathArray1;
+        handle_meander.pathArray2 = pathArray2;
+        handle_meander.pathArray3 = pathArray3;
+        handle_meander.pathArray4 = pathArray4;
+        handle_meander.path1 = path1;
+        handle_meander.path2 = path2;
+        handle_meander.path3 = path3;
+        handle_meander.path4 = path4;
+        handle_meander.parentDiv = document.getElementById("box "+numBoxes);
+        handle_meander.raph = R;
+        handle_meander.drag(move_meander, start_meander, up_meander);
+
+        newBox.draggable = 'true';
+
+        // HOVER INTERACTION
+        newBox.addEventListener("mouseover", (event) => {
+            if ( !ISPLAYBACKON ){
+                let item_index = Number(newBox.id.split(" ")[1])
+                highlightBox(item_index);
+                event.target.style["cursor"] = "pointer";
+            }
+        }); 
+        // CLICK INTERACTION
+        newBox.addEventListener("click", (event) => {
+            if ( !ISPLAYBACKON ){
+                let item_index = Number(newBox.id.split(" ")[1])
+                SELECTED_ELEMENT = item_index;
+                highlightBox(item_index); 
+            }
+        }); 
+        // DRAG AND DROP INTERACTION
+        newBox.addEventListener('dragstart', dragStart);
+        newBox.addEventListener('dragenter', dragEnter)
+        newBox.addEventListener('dragover', dragOver);
+        newBox.addEventListener('dragleave', dragLeave);
+        newBox.addEventListener('drop', drop);
+
+
+        var duration = pxHeightToTimesMs(newBox.clientHeight); 
+        compositionArray.push(new Meander(duration));
+
+        numBoxes += 1;
+        raphaels.push(R);
+    }
+}
+
+
+var start_meander = function () {
+    if ( !ISPLAYBACKON ){
+        this.cy = this.attr("cy");
+        this.attr({opacity: 1});
+    }
+};
+var move_meander = function (dx, dy) {
+    if ( !ISPLAYBACKON ){
+        var Y = this.cy + dy;
+        let max_r_px = timesToPxHeight( MAX_T );
+        let min_r_px = timesToPxHeight( MIN_T );
+        if ( Y < max_r_px && Y > min_r_px ) {
+            this.attr({ cy: Y });
+            this.pathArray1[1][2] = Y/4;
+            this.pathArray2[0][2] = Y/4;
+            this.pathArray2[1][2] = Y/4*2;
+            this.pathArray3[0][2] = Y/4*2;
+            this.pathArray3[1][2] = Y/4*3;
+            this.pathArray4[0][2] = Y/4*3;
+            this.pathArray4[1][2] = Y;
+            this.path1.attr({path: this.pathArray1});
+            this.path2.attr({path: this.pathArray2});
+            this.path3.attr({path: this.pathArray3});
+            this.path4.attr({path: this.pathArray4});
+            this.parentDiv.style["height"] = Y+MARGIN_PX;
+            this.raph.setSize(COMPOSITION_BAR_WIDTH_PX, Y+MARGIN_PX);
+        }
+    }
+};
+var up_meander = function () {
+    if ( !ISPLAYBACKON ){
+        this.attr({opacity: 0.3});
+        let compositionIndex = Number(this.parentDiv.id.split(" ")[1]);
+        compositionArray[compositionIndex].duration = pxHeightToTimesMs(this.attr("cy"));
+    }
+};
+
 
 // DEMO OBJECTS (WHEN BOXES ARE EXCHANGED NEEDS TO BE EXCHANGED IN "raphaels")
-let raphaels = [];
-let R1 = drawBox(Math.random());
-raphaels.push(R1)
-let R2 = drawCrossfade();
-raphaels.push(R2)
-let R3 = drawBox(Math.random());
-raphaels.push(R3)
-let R4 = drawMeander();
-raphaels.push(R4)
-let R5 = drawBox(Math.random());
-raphaels.push(R5)
+drawBox(0, 0, 0, Math.random(), 10000);
+drawCrossfade();
+drawBox(0, 0, 0, Math.random(), 10000);
+drawMeander();
+drawBox(0, 0, 0, Math.random(), 10000);
+
 
 
 // FUNCTION FOR HIGHLIGHTING BOXES
-function highlightNone (event){
+function highlightNone (){
     //var hovered_on_id = Number(event.target.id.split(' ')[1]);
     for (var i = 0; i < raphaels.length; i++) {
         raphaels[i].forEach(function (el) 
         {
-            el.attr({"opacity": 0.3});
+            el.attr({"opacity": MIN_OPACITY});
+        });
+    }
+    if ( SELECTED_ELEMENT != null ){
+        raphaels[SELECTED_ELEMENT].forEach(function (el) 
+        {
+            el.attr({"opacity": SELECTED_OPACITY});
         });
     }
 }
 
-function highlightBox (event, box_n, highlight_amt){    
+function highlightBox (box_n){
     for (var i = 0; i < raphaels.length; i++) {
         raphaels[i].forEach(function (el) 
         {
-            el.attr({"opacity": 0.3});
+            el.attr({"opacity": MIN_OPACITY});
         });
     }
     raphaels[box_n].forEach(function (el) 
     {
-        el.attr({"opacity": highlight_amt});
+        el.attr({"opacity": HOVER_OPACITY});
     });
+    if ( SELECTED_ELEMENT != null ){
+        raphaels[SELECTED_ELEMENT].forEach(function (el) 
+        {
+            el.attr({"opacity": SELECTED_OPACITY});
+        });
+    }
 }
 
-function highlightAll (event, highlight_amt){    
+function highlightAll (){    
     for (var i = 0; i < raphaels.length; i++) {
         raphaels[i].forEach(function (el) 
         {
-            el.attr({"opacity": highlight_amt});
+            el.attr({"opacity": HOVER_OPACITY});
         });
     }
 }
 
 
-// HOVER FUNCTIONS
-document.getElementById("scatterPlot").addEventListener("mouseover", (event) => {
-    highlightNone(event); 
-}); 
 
-// MICRO-INTERACTIONS AT BUTTONS
+
+// INTERACTIONS AT BUTTONS
 document.getElementById("insert-crossfade").addEventListener("mouseover", (event) => {
-    highlightNone(event); 
-    event.target.style["cursor"] = "pointer";
+    if ( !ISPLAYBACKON ){
+        highlightNone(); 
+        event.target.style["cursor"] = "pointer";        
+    }
 }); 
+document.getElementById("insert-crossfade").addEventListener("click", (event) => {
+    if ( !ISPLAYBACKON ){
+        SELECTED_ELEMENT = null;
+        highlightNone(); 
+        drawCrossfade();
+    }
+}); 
+
 document.getElementById("insert-meander").addEventListener("mouseover", (event) => {
-    highlightNone(event); 
-    event.target.style["cursor"] = "pointer";
+    if ( !ISPLAYBACKON ){    
+        highlightNone(); 
+        event.target.style["cursor"] = "pointer";
+    }
 }); 
+document.getElementById("insert-meander").addEventListener("click", (event) => {
+    if ( !ISPLAYBACKON ){
+        SELECTED_ELEMENT = null;
+        highlightNone(); 
+        drawMeander();
+    }
+}); 
+
 document.getElementById("bin").addEventListener("mouseover", (event) => {
-    highlightNone(event); 
-    event.target.style["cursor"] = "pointer";
+    if ( !ISPLAYBACKON ){
+        highlightNone(); 
+        event.target.style["cursor"] = "pointer";
+    }
 }); 
+document.getElementById("bin").addEventListener("click", (event) => {
+    if ( !ISPLAYBACKON ){
+        if ( SELECTED_ELEMENT != null ){
+            // trash the element
+            removeElement(SELECTED_ELEMENT)
+        }
+        SELECTED_ELEMENT = null;
+        highlightNone(); 
+    }
+}); 
+
+function removeElement(element_index){
+    
+    let element = document.getElementById('box '+ element_index)
+    let parent = element.parentNode
+    console.log('removing element: ', element);
+    // reduce number of boxes
+    element.remove();
+    numBoxes -= 1;
+    // adjust IDs of remaining boxes
+    for (var i = element_index; i < numBoxes; i++) {
+        var old_id = parent.children[i].id.split(' ');
+        old_id[1] = Number(old_id[1])-1;
+        parent.children[i].id = old_id.join(' ');
+    }
+    // remove item from composition array
+    //let comp_index = Number(id_draggable.split(' ')[1]);
+    compositionArray.splice(element_index, 1);
+    // remove raphael item from canvas array
+    raphaels.splice(element_index, 1);
+    console.log(compositionArray);
+}
+
+
+
 document.getElementById("play").addEventListener("mouseover", (event) => {
-    highlightAll(event, 0.7); 
-    event.target.style["cursor"] = "pointer";
+    if ( !ISPLAYBACKON ){
+        highlightAll(); 
+        event.target.style["cursor"] = "pointer";
+    }
 }); 
+document.getElementById("play").addEventListener("click", (event) => {
+    if ( !ISPLAYBACKON ){
+        highlightNone(); 
+        SELECTED_ELEMENT = null;
+        play();
+    }
+}); 
+
+var play = function(){
+    var timeout = 0;
+    ISPLAYBACKON = true;
+    disableAllInteractions();
+    console.log("playing composition: ", compositionArray);
+    for (let i = 0; i < compositionArray.length; i++) {
+        let newtimeout = setTimeout(function() {
+            if( ISPLAYBACKON ){
+                console.log('playing: ',compositionArray[i]);
+                SELECTED_ELEMENT = i;
+                highlightBox(i);
+                //sendBox(compositionArray[i].x, compositionArray[i].y);
+                //highlightBoxElement(document.getElementById('box '+i)); 
+            }
+        }, timeout);
+        timeout += (compositionArray[i].duration );
+        QUEUED_TIMEOUTS.push(newtimeout);
+        //console.log(timeout);
+    }
+    let newtimeout = setTimeout(function() {
+        if( ISPLAYBACKON ){
+            console.log('End of composition');
+            SELECTED_ELEMENT = null;
+            ISPLAYBACKON = false;
+            //sendStop();
+            enableAllInteractions();
+            highlightNone();
+        }
+    }, timeout+100);
+    QUEUED_TIMEOUTS.push(newtimeout);
+};
+
+function disableAllInteractions(){
+    document.getElementById("insert-crossfade").disabled = true;
+    document.getElementById("insert-meander").disabled = true;
+    document.getElementById("bin").disabled = true;
+    document.getElementById("play").disabled = true;
+    for (var i = 0; i < numBoxes; i++) {
+        let thisbox = document.getElementById("box "+i);
+        thisbox.draggable = false;
+    }
+}
+
+
 document.getElementById("stop").addEventListener("mouseover", (event) => {
-    highlightNone(event); 
+    highlightNone(); 
     event.target.style["cursor"] = "pointer";
 }); 
-
-
-// SET UP HOVER INTERACTIONS AT THE BOX CREATION
-document.getElementById("box 0").addEventListener("mouseover", (event) => {
-    highlightBox(event, 0, 0.7);
-    event.target.style["cursor"] = "pointer";
-}); 
-document.getElementById("box 1").addEventListener("mouseover", (event) => {
-    highlightBox(event, 1, 0.7); 
-    event.target.style["cursor"] = "pointer";
-}); 
-document.getElementById("box 2").addEventListener("mouseover", (event) => {
-    highlightBox(event, 2, 0.7); 
-    event.target.style["cursor"] = "pointer";
-}); 
-document.getElementById("box 3").addEventListener("mouseover", (event) => {
-    highlightBox(event, 3, 0.7); 
-    event.target.style["cursor"] = "pointer";
-}); 
-document.getElementById("box 4").addEventListener("mouseover", (event) => {
-    highlightBox(event, 4, 0.7); 
-    event.target.style["cursor"] = "pointer";
-}); 
-
-
-// SET UP CLICK INTERACTIONS AT THE BOX CREATION
-let SELECTED_ELEMENT = null;
-document.getElementById("box 0").addEventListener("click", (event) => {
-    let item_index = 0;
-    SELECTED_ELEMENT = item_index;
-    highlightBox(event, item_index, 1); 
-}); 
-document.getElementById("box 1").addEventListener("click", (event) => {
-    let item_index = 1;
-    SELECTED_ELEMENT = item_index;
-    highlightBox(event, item_index, 1); 
-}); 
-document.getElementById("box 2").addEventListener("click", (event) => {
-    let item_index = 2;
-    SELECTED_ELEMENT = item_index;
-    highlightBox(event, item_index, 1); 
-}); 
-document.getElementById("box 3").addEventListener("click", (event) => {
-    let item_index = 3;
-    SELECTED_ELEMENT = item_index;
-    highlightBox(event, item_index, 1); 
-}); 
-document.getElementById("box 4").addEventListener("click", (event) => {
-    let item_index = 4;
-    SELECTED_ELEMENT = item_index;
-    highlightBox(event, item_index, 1); 
-}); 
-
-document.getElementById("scatterPlot").addEventListener("click", (event) => {
+document.getElementById("stop").addEventListener("click", (event) => {
+    highlightNone(); 
     SELECTED_ELEMENT = null;
-    highlightNone(event); 
+    stopPlayback();
 }); 
+
+var stopPlayback = function(){
+    console.log("stopped composition playback");
+    for (var i = 0; i < QUEUED_TIMEOUTS.length; i++) {
+        clearTimeout(QUEUED_TIMEOUTS[i]);
+    }
+    //sendStop();
+    ISPLAYBACKON = false;
+    highlightNone();
+    //var all_click_on_box = document.getElementsByClassName('click-on-box');
+    //for (var i = 0; i < all_click_on_box.length; i++) {
+    //    all_click_on_box[i].classList.remove('click-on-box');
+    //}
+    enableAllInteractions();
+}
+function enableAllInteractions(){
+    document.getElementById("insert-crossfade").disabled = false;
+    document.getElementById("insert-meander").disabled = false;
+    document.getElementById("bin").disabled = false;
+    document.getElementById("play").disabled = false;
+    for (var i = 0; i < numBoxes; i++) {
+        let thisbox = document.getElementById("box "+i);
+        thisbox.draggable = true;
+    }
+}
+
+
+
+
+// SCATTERPLOT HOVER
+document.getElementById("scatterPlot").addEventListener("mouseover", (event) => {
+    highlightNone(); 
+}); 
+
+let canClick = false;
+let mouseMoved = false;
+var downListener = function(){
+    mouseMoved = false;
+}
+var moveListener = function(){
+    mouseMoved = true;
+}
+var upListener = function(){
+    if ( mouseMoved ){
+        // drag
+    } else {
+        if ( !ISPLAYBACKON ){
+            // click
+            if ( SELECTED_ELEMENT != null ){
+                // disable listening to previous point
+                SELECTED_ELEMENT = null;
+                highlightNone(); 
+            } else {
+                // you can select a new point when there is no selected point already
+                canClick = true;
+            }
+        }
+    }
+}
+document.getElementById("scatterPlot").addEventListener("mousedown", downListener);
+document.getElementById("scatterPlot").addEventListener("mousemove", moveListener);
+document.getElementById("scatterPlot").addEventListener("mouseup", upListener);
+
+
+// SCATTERPLOT CLICK
+//document.getElementById("scatterPlot").addEventListener("click", (event) => {
+    // distinguish click from dragging
+//    SELECTED_ELEMENT = null;
+//    highlightNone(event); 
+//});
 
 
 // dragging and dropping boxes
 function dragStart(e) {
+    //console.log("dragging: ", e.target.id);
     e.dataTransfer.setData('text/plain', e.target.id);
     event.target.style["cursor"] = "grabbing";
 }
@@ -407,11 +701,13 @@ function dragEnter(e) {
     } else {
         entered_box_n = Number(e.target.parentElement.parentElement.id.split(" ")[1]);
     }
+    //console.log("entering: box ", entered_box_n);
+
     if ( entered_box_n != null ){
         raphaels[entered_box_n].forEach(function (el) 
         {
             el.attr({"opacity": 1});
-        });   
+        });
     }
     event.target.style["cursor"] = "grabbing";
     //e.target.classList.add('drag-over');
@@ -426,6 +722,8 @@ function dragOver(e) {
     } else {
         entered_box_n = Number(e.target.parentElement.parentElement.id.split(" ")[1]);
     }
+    //console.log("over: box ", entered_box_n);
+
     if ( entered_box_n != null ){
         raphaels[entered_box_n].forEach(function (el) 
         {
@@ -446,6 +744,9 @@ function dragLeave(e) {
     } else {
         left_box_n = Number(e.target.parentElement.parentElement.id.split(" ")[1]);
     }
+
+    //console.log("left: box ", left_box_n);
+
     if ( left_box_n != null ){
         raphaels[left_box_n].forEach(function (el) 
         {
@@ -490,21 +791,21 @@ function dragLeave(e) {
     if (index_draggable != index_target){
         
         // locate boxes to swap
-        //let target_node = e.target.parentElement.children[index_target];
-        //let draggable_node = e.target.parentElement.children[index_draggable];
         let draggable_node = document.getElementById("box "+index_draggable);
         let target_node = document.getElementById("box "+index_target);
         console.log('swapping box '+ index_draggable + ' with box '+ index_target);
         let parent = e.target.parentElement;
         // swap boxes
         exchangeElements(draggable_node, target_node);
-        //[compositionArray[index_draggable], compositionArray[index_target]] = [compositionArray[index_target], compositionArray[index_draggable]];
+        [compositionArray[index_draggable], compositionArray[index_target]] = [compositionArray[index_target], compositionArray[index_draggable]];
+        [raphaels[index_draggable], raphaels[index_target]] = [raphaels[index_target], raphaels[index_draggable]];
 
         // correct ids
         let new_target_node = document.getElementById('box '+ (index_target));
         let new_draggable_node = document.getElementById('box '+ (index_draggable)); 
         new_target_node.id = 'box ' + (index_draggable);
         new_draggable_node.id = 'box ' + (index_target);
+
     }
     // display the draggable element
     //draggable.classList.remove('hide');
@@ -516,80 +817,29 @@ function dragLeave(e) {
 function exchangeElements(element1, element2){
     var clonedElement1 = element1.cloneNode(true);
     var clonedElement2 = element2.cloneNode(true);
-    clonedElement1.addEventListener('dragstart', dragStart);
-    clonedElement1.addEventListener('dragenter', dragEnter)
-    clonedElement1.addEventListener('dragover', dragOver);
-    clonedElement1.addEventListener('dragleave', dragLeave);
-    clonedElement1.addEventListener('drop', drop);
-    clonedElement2.addEventListener('dragstart', dragStart);
-    clonedElement2.addEventListener('dragenter', dragEnter)
-    clonedElement2.addEventListener('dragover', dragOver);
-    clonedElement2.addEventListener('dragleave', dragLeave);
-    clonedElement2.addEventListener('drop', drop);
-    /*if (clonedElement1.children.length > 0){
-        clonedElement1.children[0].addEventListener('dragstart', dragImgInsideBox);
-        clonedElement1.children[0].addEventListener('dragenter', dragImgInsideBox)
-        clonedElement1.children[0].addEventListener('dragover', dragImgInsideBox);
-        clonedElement1.children[0].addEventListener('dragleave', dragImgInsideBox);
-        clonedElement1.children[0].addEventListener('drop', dragImgInsideBox);
-    }
-    if (clonedElement2.children.length > 0){
-        clonedElement2.children[0].addEventListener('dragstart', dragImgInsideBox);
-        clonedElement2.children[0].addEventListener('dragenter', dragImgInsideBox)
-        clonedElement2.children[0].addEventListener('dragover', dragImgInsideBox);
-        clonedElement2.children[0].addEventListener('dragleave', dragImgInsideBox);
-        clonedElement2.children[0].addEventListener('drop', dragImgInsideBox);
-    }*/
     element2.parentNode.replaceChild(clonedElement1, element2);
     element1.parentNode.replaceChild(clonedElement2, element1);
-    //observer.observe(clonedElement1);
-    //observer.observe(clonedElement2);
+    clonedElement1.parentNode.replaceChild(element1, clonedElement1);
+    clonedElement2.parentNode.replaceChild(element2, clonedElement2);
 }
 
 
 
-// DRAG BEHAVIOR (ADD WHEN BOX IS CREATED)
-document.getElementById("box 0").addEventListener('dragstart', dragStart);
-document.getElementById("box 0").addEventListener('dragenter', dragEnter)
-document.getElementById("box 0").addEventListener('dragover', dragOver);
-document.getElementById("box 0").addEventListener('dragleave', dragLeave);
-document.getElementById("box 0").addEventListener('drop', drop);
-
-document.getElementById("box 1").addEventListener('dragstart', dragStart);
-document.getElementById("box 1").addEventListener('dragenter', dragEnter)
-document.getElementById("box 1").addEventListener('dragover', dragOver);
-document.getElementById("box 1").addEventListener('dragleave', dragLeave);
-document.getElementById("box 1").addEventListener('drop', drop);
-
-document.getElementById("box 2").addEventListener('dragstart', dragStart);
-document.getElementById("box 2").addEventListener('dragenter', dragEnter)
-document.getElementById("box 2").addEventListener('dragover', dragOver);
-document.getElementById("box 2").addEventListener('dragleave', dragLeave);
-document.getElementById("box 2").addEventListener('drop', drop);
-
-document.getElementById("box 3").addEventListener('dragstart', dragStart);
-document.getElementById("box 3").addEventListener('dragenter', dragEnter)
-document.getElementById("box 3").addEventListener('dragover', dragOver);
-document.getElementById("box 3").addEventListener('dragleave', dragLeave);
-document.getElementById("box 3").addEventListener('drop', drop);
-
-document.getElementById("box 4").addEventListener('dragstart', dragStart);
-document.getElementById("box 4").addEventListener('dragenter', dragEnter)
-document.getElementById("box 4").addEventListener('dragover', dragOver);
-document.getElementById("box 4").addEventListener('dragleave', dragLeave);
-document.getElementById("box 4").addEventListener('drop', drop);
-
-
-// BOX EXCHANGE
+// BOX EXCHANGE     DONE
 // WINDOW SIZE UPDATE
 // CLICK ON POINT CLOUD --> CREATE BOX
-// BUTTONS: CREATE CROSSFADE, CREATE MEANDER, DRAG ON BIN AND CLICK+BIN
+// BUTTONS: CREATE CROSSFADE, CREATE MEANDER, CLICK ON BIN
 // OSC COMMUNICATION
 // HOVER FOR A LONG TIME INCREASES VOLUME AND BIGGER POINTER
 // BUTTONS: PLAY AND STOP
 // LOGIC WITH LONG AND SHORT TERM PLAY FUNCTIONS
 // RENDER 
+// FIX POSITION OF TIMELINE, SCATTERPLOT AND COMMANDS WHEN COMPOSTION BAR GOES DOWN
 
-
+/* FOR WEBPAGE: 
+- SWITCHABLE EXAMPLES OF SMALL COMPOSITIONS
+- PANE TO CHECK BENJOLIN PARAMETERS (AND MANIPULATE?)
+- CREDITS AND LINKS
+*/
 
 

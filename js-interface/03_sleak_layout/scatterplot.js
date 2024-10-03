@@ -135,7 +135,15 @@ function animate() {
 // RENDER FUNCTION FOR ANIMATION
 function render() {
     const time = Date.now() * 0.5;
-    pickHelper.pick(pickPosition, scene, camera, time);
+
+    if ( SELECTED_ELEMENT == null ){
+	    pickHelper.pick(pickPosition, scene, camera, time);
+	    if ( canClick ){ // check for click and not drag
+	        pickHelper.click(pickPosition, scene, camera, time);
+	        canClick = false;
+	    }
+    }
+    // PICKED INDEX DISAPPEARS WHEN OUT OF SCATTERPLOT
     if ( !MOUSEONSCATTERPLOT ){
         pointToBasic(CURRENTPICKEDINDEX)
         CURRENTPICKEDINDEX = null;
@@ -199,6 +207,47 @@ class PickHelper {
             //console.log("picked ID: "+intersectedObjects[0].index);
         }
     }
+    click(normalizedPosition, scene, camera, time) {
+        // restore the color if there is a picked object
+        if (this.clickedObject) {
+            this.clickedObject = undefined;
+            this.clickedObjectIndex = undefined;
+        }
+        // cast a ray through the frustum
+        this.raycaster.setFromCamera(normalizedPosition, camera);
+        // get the list of objects the ray intersected
+        const intersectedObjects = this.raycaster.intersectObjects(scene.children);
+        if (intersectedObjects.length) {
+            if (intersectedObjects[0].index != this.clickedObjectIndex){
+                let compositionTime = calculateCurrentCompostionTime();
+                if ( compositionTime < MAX_COMPOSITION_DURATION){
+                    
+                    // click the first object. It's the closest one            
+                    this.clickedObject = intersectedObjects[0].object;
+                    this.clickedObjectIndex = intersectedObjects[0].index;
+                    clickedIndices.push(this.clickedObjectIndex);
+                    // update size
+                    particles.geometry.attributes.size.array[ this.clickedObjectIndex ] = PARTICLE_SIZE * 20;
+                    particles.geometry.attributes.size.needsUpdate = true;
+                    // update opacity
+                    particles.geometry.attributes.opacity.array[ this.clickedObjectIndex ] = 1;
+                    particles.geometry.attributes.opacity.needsUpdate = true;
+                    // update color
+                    let newcolor = new THREE.Color();
+                    newcolor.setRGB( Math.random(), Math.random(), Math.random() );
+                    particles.geometry.attributes.customColor.array[ this.clickedObjectIndex * 3 ] = newcolor.r;
+                    particles.geometry.attributes.customColor.array[ this.clickedObjectIndex * 3 + 1 ] = newcolor.g;
+                    particles.geometry.attributes.customColor.array[ this.clickedObjectIndex * 3 + 2 ] = newcolor.b;
+                    particles.geometry.attributes.customColor.needsUpdate = true;
+                    material.needsUpdate = true
+                    console.log("clicked ID: "+intersectedObjects[0].index);
+
+                    drawBox(x[ this.clickedObjectIndex ], y[ this.clickedObjectIndex ], z[ this.clickedObjectIndex ], 
+                        Math.random(), this.clickedObjectIndex); 
+                }
+            }
+        }
+    }
 }
 
 const pickPosition = {x: 0, y: 0}; // pick position in 2D space
@@ -235,6 +284,7 @@ window.addEventListener('touchmove', (event) => {
     setPickPosition(event.touches[0]);
 });
 window.addEventListener('touchend', clearPickPosition);
+
 const pickHelper = new PickHelper();
 let isMouseDown = false;
 let timer = 0;
@@ -275,5 +325,8 @@ function pointToBasic(pointIndex){
     particles.geometry.attributes.customColor.needsUpdate = true;
     material.needsUpdate = true
 }
+
+
+
 
 

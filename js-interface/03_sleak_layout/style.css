@@ -26,7 +26,7 @@ body {
 #composition-bar {
     position:absolute;
     left: 50px; top: 120px;
-    float:left; display:inline; width: 200px;
+    float:left; display:inline; width: 150px;
 }
 
 .overlay {
@@ -35,4 +35,8 @@ body {
     top: 0;
     left: 0;
     opacity: 0.5;
+}
+
+.hover:hover {
+    cursor: pointer;
 }

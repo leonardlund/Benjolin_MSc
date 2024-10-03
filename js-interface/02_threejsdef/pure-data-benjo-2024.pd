@@ -1,4 +1,4 @@
-#N canvas 214 38 655 527 12;
+#N canvas 214 38 497 527 12;
 #X declare -lib zexy;
 #X obj 281 25 declare -lib zexy;
 #N canvas 842 277 950 692 test 0;
